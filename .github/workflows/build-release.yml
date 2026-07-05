@@ -61,8 +61,11 @@ jobs:
             - name: Install dependencies
               run: |
                   mkdir -p build dist
+                  sudo apt update
+                  sudo apt install -y wine64
+                  sudo ln -sf /usr/bin/wine /usr/bin/wine64
                   cd src
-                  npm ci
+                  npm install
                   npm install -g @electron/packager
 
             - name: Build Windows binaries
@@ -113,7 +116,7 @@ jobs:
               run: |
                   mkdir -p build dist
                   cd src
-                  npm ci
+                  npm install
                   npm install -g @electron/packager
 
             - name: Build Linux binaries
@@ -166,7 +169,7 @@ jobs:
                   cd ..
                   mkdir -p build dist
                   cd src
-                  npm ci
+                  npm install
                   npm install -g @electron/packager
 
             - name: Build macOS binaries
