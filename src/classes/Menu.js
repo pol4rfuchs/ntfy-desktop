@@ -143,8 +143,8 @@ function newMenuMain()
                                                 }
                                             },
                                             {
-                                                label: 'Localhost Mode',
-                                                description: 'Enable this if you are running a localhost ntfy server',
+                                                label: 'Skip URL Validation',
+                                                description: 'Skip connection check on startup (use for local/private instances or self-signed certs)',
                                                 selectOptions: { 0: 'Disabled', 1: 'Enabled' },
                                                 value: deps.store.get( 'bLocalhost' )
                                             }

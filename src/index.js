@@ -337,18 +337,18 @@ function IsValidUrl( uri, tries, delay )
             };
 
             /**
-                specifically for localhost and local network urls, use different mode
-            */
+                Do NOT set fetchOptions.mode here.
 
-            if ( isLocalUrl )
-            {
-                fetchOptions.mode = 'cors';
-                fetchOptions.headers[ 'Access-Control-Request-Method' ] = 'HEAD';       // add additional headers that might be needed for local apps
-            }
-            else
-            {
-                fetchOptions.mode = 'no-cors';
-            }
+                In Electron's main process, fetch runs via Node.js (undici), which does NOT
+                support browser-only fetch modes like 'no-cors' or 'cors'. Setting either
+                throws a TypeError immediately, causing all URL validation to fail and the
+                app to fall back to ntfy.sh regardless of what the user configured.
+
+                Without a mode property, Node.js fetch makes a plain HTTP/HTTPS request with
+                no CORS restrictions — which is exactly what URL validation in the main
+                process needs. This fix makes self-hosted instances work without enabling
+                "Skip URL Validation".
+            */
 
             fetch( uri, fetchOptions )
             .then( ( response ) =>
@@ -356,22 +356,9 @@ function IsValidUrl( uri, tries, delay )
                 clearTimeout( timeoutId );
 
                 /**
-                    no-CORS mode
-
-                    we can't check status, but if we get here, the URL resolved
-                */
-
-                if ( fetchOptions.mode === 'no-cors' )
-                {
-                    success( response );
-                    return;
-                }
-
-                /**
-                    CORS mode (localhost / self-hosted)
-
-                    check if response is reasonable
-                    accept any response that isn't a clear network error
+                    Accept any response with HTTP status < 500.
+                    A 401/403 means the server is reachable (ntfy auth is configured).
+                    Opaque responses are also treated as reachable.
                 */
 
                 if ( response.status < 500 || response.type === 'opaque' )
@@ -387,7 +374,7 @@ function IsValidUrl( uri, tries, delay )
                     for localhost urls, try a fallback GET request if HEAD fails
                 */
 
-                if ( isLocalUrl && fetchOptions.method === 'HEAD' && tries > 1 )
+                if ( fetchOptions.method === 'HEAD' && tries > 1 )
                 {
                     const fallbackOptions = { ...fetchOptions, method: 'GET' };
                     const fallbackController = new AbortController();
@@ -1036,12 +1023,37 @@ function ready()
     });
 
     /**
+        Certificate error handler
+
+        Allows self-hosted ntfy instances using self-signed certificates to load
+        without browser security warnings. Only bypasses cert errors for the
+        user's configured instance host; all other hosts use default Chromium validation.
+    */
+
+    guiMain.webContents.session.setCertificateVerifyProc( ( request, callback ) =>
+    {
+        const instanceUrl = store.get( 'instanceURL' ) || defInstanceUrl;
+        try
+        {
+            const instanceHost = new URL( instanceUrl ).hostname;
+            if ( request.hostname === instanceHost )
+                callback( 0 );      // 0 = allow cert
+            else
+                callback( -3 );     // -3 = default Chromium verification
+        }
+        catch
+        {
+            callback( -3 );
+        }
+    });
+
+    /**
         get instance url;
-        determine if the user has enabled localhost
+        determine if the user has enabled "Skip URL Validation"
 
-        in localhost mode, we do not validate the url
-
-        @todo:              add conditions to IsValidUrl to support localhost websites
+        With the no-cors fix, this toggle is no longer required for self-hosted
+        HTTPS instances. It remains available to skip validation entirely
+        (e.g. very slow local networks or unreachable hosts on startup).
     */
 
     const instanceUrl = store.get( 'instanceURL' ) || defInstanceUrl;

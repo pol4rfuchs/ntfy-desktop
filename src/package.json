@@ -3,8 +3,8 @@
     "title": "Ntfy Desktop",
     "version": "2.2.0",
     "description": "Ntfy.sh desktop client for Windows, Linux, and MacOS with push notifications. Supports official ntfy.sh website and self-hosted instances.",
-    "author": "Aetherinox",
-    "homepage": "https://github.com/aetherinox/ntfy-desktop",
+    "author": "pol4rfuchs",
+    "homepage": "https://github.com/pol4rfuchs/ntfy-desktop",
     "license": "GPLv3",
     "main": "index.js",
     "type": "module",
@@ -35,22 +35,15 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/aetherinox/ntfy-desktop.git"
+        "url": "git+https://github.com/pol4rfuchs/ntfy-desktop.git"
     },
     "bugs": {
-        "url": "https://github.com/aetherinox/ntfy-desktop/issues"
+        "url": "https://github.com/pol4rfuchs/ntfy-desktop/issues"
     },
-    "funding": [
-        {
-            "type": "individual",
-            "url": "https://buymeacoffee.com/aetherinox"
-        }
-    ],
     "contributors": [
         {
-            "name": "Aetherinox",
-            "email": "118329232+Aetherinox@users.noreply.github.com",
-            "url": "https://github.com/Aetherinox"
+            "name": "pol4rfuchs",
+            "url": "https://github.com/pol4rfuchs"
         }
     ],
     "keywords": [
@@ -64,10 +57,10 @@
     "config": {
         "title": "Ntfy Desktop",
         "description": "Ntfy.sh desktop client for Windows, Linux, and MacOS with push notifications. Supports official ntfy.sh website and self-hosted instances.",
-        "repo": "https://github.com/aetherinox/ntfy-desktop",
+        "repo": "https://github.com/pol4rfuchs/ntfy-desktop",
         "year": "2025",
         "author": {
-            "name": "Aetherinox"
+            "name": "pol4rfuchs"
         }
     },
     "scripts": {
