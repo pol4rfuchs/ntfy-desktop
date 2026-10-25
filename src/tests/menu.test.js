@@ -647,7 +647,13 @@ describe( 'Menu Class Tests', () =>
                 setMenu: vi.fn()
             };
 
-            BrowserWindow.mockImplementationOnce( () => mockAboutWindow );
+            BrowserWindow.mockImplementationOnce( class
+            {
+                constructor()
+                {
+                    return mockAboutWindow;
+                }
+            });
 
             await aboutItem.click();
 

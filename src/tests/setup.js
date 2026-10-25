@@ -34,33 +34,38 @@ vi.mock( 'electron', () => (
         on: vi.fn(),
         quit: vi.fn()
     },
-    BrowserWindow: vi.fn().mockImplementation( () => (
+    BrowserWindow: vi.fn( class
     {
-        loadURL: vi.fn().mockResolvedValue( undefined ),
-        loadFile: vi.fn().mockResolvedValue( undefined ),
-        webContents:
+        constructor()
         {
-            send: vi.fn(),
-            executeJavaScript: vi.fn().mockResolvedValue( undefined ),
-            toggleDevTools: vi.fn(),
-            on: vi.fn(),
-            isDestroyed: vi.fn( () => false ),
-            navigationHistory: {
-                canGoBack: () => true,
-                canGoForward: () => true,
-                goBack: () => {},
-                goForward: () => {}
-            }
-        },
-        on: vi.fn(),
-        hide: vi.fn(),
-        show: vi.fn(),
-        reload: vi.fn(),
-        setFullScreen: vi.fn(),
-        isFullScreen: vi.fn( () => false ),
-        setMenu: vi.fn(),
-        getAllWindows: vi.fn( () => [] )
-    }) ),
+            return {
+                loadURL: vi.fn().mockResolvedValue( undefined ),
+                loadFile: vi.fn().mockResolvedValue( undefined ),
+                webContents:
+                {
+                    send: vi.fn(),
+                    executeJavaScript: vi.fn().mockResolvedValue( undefined ),
+                    toggleDevTools: vi.fn(),
+                    on: vi.fn(),
+                    isDestroyed: vi.fn( () => false ),
+                    navigationHistory: {
+                        canGoBack: () => true,
+                        canGoForward: () => true,
+                        goBack: () => {},
+                        goForward: () => {}
+                    }
+                },
+                on: vi.fn(),
+                hide: vi.fn(),
+                show: vi.fn(),
+                reload: vi.fn(),
+                setFullScreen: vi.fn(),
+                isFullScreen: vi.fn( () => false ),
+                setMenu: vi.fn(),
+                getAllWindows: vi.fn( () => [] )
+            };
+        }
+    }),
     ipcMain:
     {
         on: vi.fn(),
@@ -76,12 +81,17 @@ vi.mock( 'electron', () => (
     {
         exposeInMainWorld: vi.fn()
     },
-    Tray: vi.fn( () => (
+    Tray: vi.fn( class
     {
-        setToolTip: vi.fn(),
-        setContextMenu: vi.fn(),
-        on: vi.fn()
-    }) ),
+        constructor()
+        {
+            return {
+                setToolTip: vi.fn(),
+                setContextMenu: vi.fn(),
+                on: vi.fn()
+            };
+        }
+    }),
     Menu:
     {
         buildFromTemplate: vi.fn(),
@@ -242,11 +252,8 @@ vi.mock( 'electron-plugin-prompts', () => (
 */
 
 global.fetch = vi.fn();
-global.AbortController = vi.fn( () => (
-{
-    abort: vi.fn(),
-    signal: {}
-}) );
+// wrap the real class: vitest's own runner uses AbortController, so a fake signal breaks it
+global.AbortController = vi.fn( globalThis.AbortController );
 
 /*
     set NODE_ENV for testing

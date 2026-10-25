@@ -22,23 +22,14 @@ export default defineConfig(
         hookTimeout: 30000,
         teardownTimeout: 10000,
         
-        // Force synchronous execution - no workers at all
+        // Force synchronous execution - a single worker, no parallel test files
+        // (vitest 4+ removed poolOptions / singleThread / minWorkers; maxWorkers: 1
+        // with isolate: false is the replacement for singleThread)
         pool: 'vmThreads',
-        poolOptions: {
-            vmThreads: {
-                singleThread: true
-            }
-        },
-        
-        // Completely disable all worker processes
         isolate: false,
-        threads: false,
+        fileParallelism: false,
         maxConcurrency: 1,
         maxWorkers: 1,
-        minWorkers: 1,
-        
-        // Force single threaded mode
-        singleThread: true,
         
         // Run tests completely sequentially 
         sequence: {
@@ -46,8 +37,6 @@ export default defineConfig(
             shuffle: false,
             hooks: 'stack'
         },
-        
-        // Disable file parallelization (removed - not available in v1.6.0)
         
         // Add process environment configuration
         env: {
@@ -172,16 +161,15 @@ export default defineConfig(
         setupFiles: [ './tests/setup.js' ],
 
         // Reporters
-        reporter: [
+        reporters: [
             'verbose',
             'json',
-            'html'
+            'html'          // written to .vitest/ (must stay outside coverage/, which it copies in)
         ],
 
         // Output files
         outputFile: {
-            json: './coverage/test-results.json',
-            html: './coverage/test-results.html'
+            json: './coverage/test-results.json'
         }
     },
 
