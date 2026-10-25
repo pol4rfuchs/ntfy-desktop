@@ -113,7 +113,7 @@ jobs:
                       SUFFIX=""
                   fi
 
-                  for ARCH in arm64 ia32 x64; do
+                  for ARCH in arm64 x64; do
                       LABEL=$([[ "$ARCH" == "x64" ]] && echo "amd64" || echo "$ARCH")
                       (cd build/${PRJ}-win32-${ARCH} && zip -r - .) > ${PRJ}-${VER}${SUFFIX}-win32-${LABEL}.zip
                       echo "✅ ${PRJ}-${VER}${SUFFIX}-win32-${LABEL}.zip"
@@ -164,7 +164,7 @@ jobs:
                       SUFFIX=""
                   fi
 
-                  for ARCH in arm64 armv7l x64; do
+                  for ARCH in arm64 x64; do
                       LABEL=$([[ "$ARCH" == "x64" ]] && echo "amd64" || echo "$ARCH")
                       (cd build/${PRJ}-linux-${ARCH} && zip -r - .) > ${PRJ}-${VER}${SUFFIX}-linux-${LABEL}.zip
                       echo "✅ ${PRJ}-${VER}${SUFFIX}-linux-${LABEL}.zip"
