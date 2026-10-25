@@ -36,12 +36,12 @@ vi.mock( 'electron', () => (
     },
     BrowserWindow: vi.fn().mockImplementation( () => (
     {
-        loadURL: vi.fn().mockResolvedValue(undefined),
-        loadFile: vi.fn().mockResolvedValue(undefined),
+        loadURL: vi.fn().mockResolvedValue( undefined ),
+        loadFile: vi.fn().mockResolvedValue( undefined ),
         webContents:
         {
             send: vi.fn(),
-            executeJavaScript: vi.fn().mockResolvedValue(undefined),
+            executeJavaScript: vi.fn().mockResolvedValue( undefined ),
             toggleDevTools: vi.fn(),
             on: vi.fn(),
             isDestroyed: vi.fn( () => false ),
@@ -57,7 +57,7 @@ vi.mock( 'electron', () => (
         show: vi.fn(),
         reload: vi.fn(),
         setFullScreen: vi.fn(),
-        isFullScreen: vi.fn(() => false),
+        isFullScreen: vi.fn( () => false ),
         setMenu: vi.fn(),
         getAllWindows: vi.fn( () => [] )
     }) ),
@@ -259,61 +259,80 @@ process.env.LOG_LEVEL = '4';
     comprehensive fix for process.listeners issue in worker threads
 */
 
-if (typeof process !== 'undefined') {
+if ( typeof process !== 'undefined' )
+{
     // Ensure process.listeners exists and works properly
-    if (!process.listeners) {
-        process.listeners = function(event) {
+    if ( !process.listeners )
+{
+        process.listeners = function ( event )
+{
             return [];
         };
     }
     
     // Patch process to prevent undefined access
     const originalListeners = process.listeners;
-    process.listeners = function(event) {
-        try {
-            if (typeof originalListeners === 'function') {
-                return originalListeners.call(this, event) || [];
+    process.listeners = function ( event )
+{
+        try
+{
+            if ( typeof originalListeners === 'function' )
+{
+                return originalListeners.call( this, event ) || [];
             }
             return [];
-        } catch (e) {
+        }
+ catch ( e )
+{
             return [];
         }
     };
     
     // Ensure other process methods exist
-    if (!process.listenerCount) {
-        process.listenerCount = function(event) {
+    if ( !process.listenerCount )
+{
+        process.listenerCount = function ( event )
+{
             return 0;
         };
     }
     
-    if (!process.removeAllListeners) {
-        process.removeAllListeners = function(event) {
+    if ( !process.removeAllListeners )
+{
+        process.removeAllListeners = function ( event )
+{
             return this;
         };
     }
     
     // Override uncaughtException handler to suppress specific errors
-    const originalUncaughtException = process.listeners('uncaughtException');
-    process.removeAllListeners('uncaughtException');
+    const originalUncaughtException = process.listeners( 'uncaughtException' );
+    process.removeAllListeners( 'uncaughtException' );
     
-    process.on('uncaughtException', (error) => {
+    process.on( 'uncaughtException', ( error ) =>
+{
         // Suppress specific worker thread errors
-        if (error.message && (
-            error.message.includes('Cannot read properties of undefined (reading \'listeners\')') ||
-            error.message.includes('Channel closed') ||
-            error.message.includes('ERR_IPC_CHANNEL_CLOSED')
-        )) {
+        if ( error.message && (
+            error.message.includes( 'Cannot read properties of undefined (reading \'listeners\')' ) ||
+            error.message.includes( 'Channel closed' ) ||
+            error.message.includes( 'ERR_IPC_CHANNEL_CLOSED' )
+        ) )
+{
             // Silently ignore these errors
             return;
         }
         
         // Re-emit other errors through original handlers
-        if (originalUncaughtException && originalUncaughtException.length > 0) {
-            originalUncaughtException.forEach(handler => {
-                try {
-                    handler(error);
-                } catch (e) {
+        if ( originalUncaughtException && originalUncaughtException.length > 0 )
+{
+            originalUncaughtException.forEach( ( handler ) =>
+{
+                try
+{
+                    handler( error );
+                }
+ catch ( e )
+{
                     // Ignore handler errors
                 }
             });
@@ -321,27 +340,34 @@ if (typeof process !== 'undefined') {
     });
     
     // Override unhandledRejection handler to suppress specific errors
-    const originalUnhandledRejection = process.listeners('unhandledRejection');
-    process.removeAllListeners('unhandledRejection');
+    const originalUnhandledRejection = process.listeners( 'unhandledRejection' );
+    process.removeAllListeners( 'unhandledRejection' );
     
-    process.on('unhandledRejection', (reason, promise) => {
+    process.on( 'unhandledRejection', ( reason, promise ) =>
+{
         // Suppress specific worker thread errors
-        if (reason && reason.message && (
-            reason.message.includes('Cannot read properties of undefined (reading \'listeners\')') ||
-            reason.message.includes('Channel closed') ||
-            reason.message.includes('ERR_IPC_CHANNEL_CLOSED') ||
+        if ( reason && reason.message && (
+            reason.message.includes( 'Cannot read properties of undefined (reading \'listeners\')' ) ||
+            reason.message.includes( 'Channel closed' ) ||
+            reason.message.includes( 'ERR_IPC_CHANNEL_CLOSED' ) ||
             reason.code === 'ERR_IPC_CHANNEL_CLOSED'
-        )) {
+        ) )
+{
             // Silently ignore these errors
             return;
         }
         
         // Re-emit other errors through original handlers
-        if (originalUnhandledRejection && originalUnhandledRejection.length > 0) {
-            originalUnhandledRejection.forEach(handler => {
-                try {
-                    handler(reason, promise);
-                } catch (e) {
+        if ( originalUnhandledRejection && originalUnhandledRejection.length > 0 )
+{
+            originalUnhandledRejection.forEach( ( handler ) =>
+{
+                try
+{
+                    handler( reason, promise );
+                }
+ catch ( e )
+{
                     // Ignore handler errors
                 }
             });

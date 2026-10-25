@@ -17,7 +17,7 @@ export default defineConfig(
 {
     test: {
         globals: true,
-        environment: 'node', 
+        environment: 'node',
         testTimeout: 30000,
         hookTimeout: 30000,
         teardownTimeout: 10000,
@@ -62,10 +62,12 @@ export default defineConfig(
         ],
         
         // Suppress known worker thread errors
-        onConsoleLog: (log, type) => {
-            if (log.includes('Cannot read properties of undefined (reading \'listeners\')') ||
-                log.includes('Channel closed') ||
-                log.includes('ERR_IPC_CHANNEL_CLOSED')) {
+        onConsoleLog: ( log, type ) =>
+{
+            if ( log.includes( 'Cannot read properties of undefined (reading \'listeners\')' ) ||
+                log.includes( 'Channel closed' ) ||
+                log.includes( 'ERR_IPC_CHANNEL_CLOSED' ) )
+{
                 return false; // Suppress these specific errors
             }
             return undefined; // Allow other logs
