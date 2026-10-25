@@ -79,6 +79,7 @@ jobs:
         name: '🪟 Build Windows'
         needs: [ init, test ]
         runs-on: ubuntu-latest
+        timeout-minutes: 30
         env:
             VERSION: ${{ needs.init.outputs.version }}
         steps:
@@ -91,8 +92,10 @@ jobs:
             - name: Install dependencies
               run: |
                   mkdir -p build dist
-                  sudo apt update
-                  sudo apt install -y wine64
+                  # retry stalled mirror downloads instead of hanging until the job timeout
+                  APT_OPTS="-o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30"
+                  sudo apt-get $APT_OPTS update
+                  sudo apt-get $APT_OPTS install -y wine64
                   sudo ln -sf /usr/bin/wine /usr/bin/wine64
                   cd src
                   npm ci
@@ -133,6 +136,7 @@ jobs:
         name: '🐧 Build Linux'
         needs: [ init, test ]
         runs-on: ubuntu-latest
+        timeout-minutes: 30
         env:
             VERSION: ${{ needs.init.outputs.version }}
         steps:
@@ -184,6 +188,7 @@ jobs:
         name: '🍎 Build macOS'
         needs: [ init, test ]
         runs-on: macos-latest
+        timeout-minutes: 30
         env:
             VERSION: ${{ needs.init.outputs.version }}
         steps:
