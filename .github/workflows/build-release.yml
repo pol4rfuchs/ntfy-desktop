@@ -42,12 +42,42 @@ jobs:
                   echo "Version: $VER"
 
     # ─────────────────────────────────────────────────────────────
+    #   Lint & unit tests
+    # ─────────────────────────────────────────────────────────────
+
+    test:
+        name: '🧪 Lint & Test'
+        runs-on: ubuntu-latest
+        env:
+            ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: '22.x'
+                  cache: 'npm'
+                  cache-dependency-path: src/package-lock.json
+
+            - name: Install dependencies
+              working-directory: ./src
+              run: npm ci
+
+            - name: Lint
+              working-directory: ./src
+              run: npm run lint
+
+            - name: Unit tests
+              working-directory: ./src
+              run: npx vitest run
+
+    # ─────────────────────────────────────────────────────────────
     #   Build Windows (cross-compiled on ubuntu)
     # ─────────────────────────────────────────────────────────────
 
     build-windows:
         name: '🪟 Build Windows'
-        needs: init
+        needs: [ init, test ]
         runs-on: ubuntu-latest
         env:
             VERSION: ${{ needs.init.outputs.version }}
@@ -65,7 +95,7 @@ jobs:
                   sudo apt install -y wine64
                   sudo ln -sf /usr/bin/wine /usr/bin/wine64
                   cd src
-                  npm install
+                  npm ci
                   npm install -g @electron/packager
 
             - name: Build Windows binaries
@@ -101,7 +131,7 @@ jobs:
 
     build-linux:
         name: '🐧 Build Linux'
-        needs: init
+        needs: [ init, test ]
         runs-on: ubuntu-latest
         env:
             VERSION: ${{ needs.init.outputs.version }}
@@ -116,7 +146,7 @@ jobs:
               run: |
                   mkdir -p build dist
                   cd src
-                  npm install
+                  npm ci
                   npm install -g @electron/packager
 
             - name: Build Linux binaries
@@ -152,7 +182,7 @@ jobs:
 
     build-macos:
         name: '🍎 Build macOS'
-        needs: init
+        needs: [ init, test ]
         runs-on: macos-latest
         env:
             VERSION: ${{ needs.init.outputs.version }}
@@ -169,7 +199,7 @@ jobs:
                   cd ..
                   mkdir -p build dist
                   cd src
-                  npm install
+                  npm ci
                   npm install -g @electron/packager
 
             - name: Build macOS binaries
@@ -233,7 +263,7 @@ jobs:
               with:
                   token: ${{ secrets.GITHUB_TOKEN }}
                   name: v${{ env.VERSION }}${{ env.RC_RELEASE == 'true' && format('-rc.{0}', env.RC_VERSION) || '' }}
-                  tag_name: ${{ env.VERSION }}${{ env.RC_RELEASE == 'true' && format('-rc.{0}', env.RC_VERSION) || '' }}
+                  tag_name: v${{ env.VERSION }}${{ env.RC_RELEASE == 'true' && format('-rc.{0}', env.RC_VERSION) || '' }}
                   draft: false
                   prerelease: ${{ env.RC_RELEASE == 'true' }}
                   generate_release_notes: true

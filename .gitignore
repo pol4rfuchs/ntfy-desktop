@@ -115,6 +115,7 @@
 !/src
 !/src/*.ts
 !/src/vitest.config.js
+!/src/package-lock.json
 /src/node_modules
 /src/playwright
 /src/playwright-report

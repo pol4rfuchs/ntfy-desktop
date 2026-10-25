@@ -61,6 +61,7 @@ export default
     {
         ignores: [
             'coverage/**',
+            '.vitest/**',
             'node_modules/**',
             '**/dist/**/*',
             '**/__tmp__/**/*',
