@@ -334,6 +334,12 @@ describe( 'Storage Class Tests', () =>
             expect( storage.getSanitized( 'stringMixed' ) ).toBe( 'helloworld' );
         });
 
+        it( 'should return fallback for missing or non-string values', () =>
+        {
+            expect( storage.getSanitized( 'missingKey', 'announcements,stats' ) ).toBe( 'announcements,stats' );
+            expect( storage.getSanitized( 'missingKey' ) ).toBe( '' );
+        });
+
         it( 'should handle strings with no whitespace', () =>
         {
             expect( storage.getSanitized( 'stringNoSpaces' ) ).toBe( 'helloworld' );

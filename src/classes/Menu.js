@@ -111,9 +111,9 @@ function newMenuMain()
                                         deps.store.set( 'bStartHidden', resp[ 3 ] );
                                     }
                                 })
-                                .catch( ( resp ) =>
+                                .catch( ( err ) =>
                                 {
-                                    console.error;
+                                    console.error( 'Settings prompt failed:', err );
                                 });
                             }
                         },
@@ -184,15 +184,15 @@ function newMenuMain()
                                         {
                                             deps.IsValidUrl( deps.store.get( 'instanceURL' ), 3, 1000 ).then( ( item ) =>
                                             {
-                                                deps.statusBadURL = false;
+                                                deps.setStatusBadURL( false );
                                                 console.log( `Successfully resolved ` + deps.store.get( 'instanceURL' ) );
                                                 console.log( 'Loading URL after validation:', deps.store.get( 'instanceURL' ) );
                                                 deps.guiMain.loadURL( deps.store.get( 'instanceURL' ) );
                                             }).catch( ( err ) =>
                                             {
-                                                deps.statusBadURL = true;
+                                                deps.setStatusBadURL( true );
                                                 const msg = `Failed to resolve ` + deps.store.get( 'instanceURL' ) + ` - defaulting to ${ deps.defInstanceUrl }`;
-                                                deps.statusStrMsg = `${ msg }`;
+                                                deps.setStatusStrMsg( `${ msg }` );
                                                 console.error( `URL validation failed: ${ err.message }` );
                                                 console.error( `${ msg }` );
                                                 deps.store.set( 'instanceURL', deps.defInstanceUrl );
@@ -201,9 +201,9 @@ function newMenuMain()
                                         }
                                     }
                                 })
-                                .catch( ( resp ) =>
+                                .catch( ( err ) =>
                                 {
-                                    console.error;
+                                    console.error( 'Settings prompt failed:', err );
                                 });
                             }
                         },
@@ -217,7 +217,7 @@ function newMenuMain()
                                         title: 'Set API Token',
                                         label: `API Token\u003cdiv class="label-desc"\u003eGenerate an API token within ntfy.sh  or your self-hosted instance and provide it below to receive desktop push notifications.\u003c/div\u003e`,
                                         useHtmlLabel: true,
-                                        value: deps.store.get( 'apiToken' ),
+                                        value: deps.getApiToken(),
                                         alwaysOnTop: true,
                                         type: 'input',
                                         customStylesheet: path.join( app.getAppPath(), `pages`, `css`, `prompt.css` ),
@@ -232,11 +232,11 @@ function newMenuMain()
                                 .then( ( resp ) =>
                                 {
                                     if ( resp !== null )
-                                        deps.store.set( 'apiToken', resp );
+                                        deps.setApiToken( resp );
                                 })
-                                .catch( ( resp ) =>
+                                .catch( ( err ) =>
                                 {
-                                    console.error;
+                                    console.error( 'Settings prompt failed:', err );
                                 });
                             }
                         },
@@ -281,9 +281,9 @@ function newMenuMain()
                                         }
                                     }
                                 })
-                                .catch( ( resp ) =>
+                                .catch( ( err ) =>
                                 {
-                                    console.error;
+                                    console.error( 'Settings prompt failed:', err );
                                 });
                             }
                         },
@@ -350,20 +350,12 @@ function newMenuMain()
                                     restart polling with new interval
                                 */
 
-                                const fetchInterval = ( newPollrate * 1000 ) + 600;
-                                if ( deps.pollInterval )
-                                    clearInterval( deps.pollInterval );
-
-                                deps.pollInterval = setInterval( deps.GetMessages, fetchInterval );
-
-                                deps.Log.info( `core`, deps.chalk.yellow( `[polling]` ), deps.chalk.white( `:  ` ),
-                                    deps.chalk.blueBright( `<msg>` ), deps.chalk.gray( `Updated polling interval` ),
-                                    deps.chalk.blueBright( `<interval>` ), deps.chalk.gray( `${ fetchInterval }ms` ) );
+                                deps.startPolling();
                             }
                         })
-                        .catch( ( resp ) =>
+                        .catch( ( err ) =>
                         {
-                            console.error;
+                            console.error( 'Settings prompt failed:', err );
                         });
                     }
                 }
@@ -503,14 +495,14 @@ function newMenuMain()
             label: 'Check for Updates',
             click()
             {
-                deps.shell.openExternal( `${ deps.packageJson.homepage }` );
+                deps.openExternalSafe( `${ deps.packageJson.homepage }` );
             }
         },
         {
             label: 'Sponsor',
             click()
             {
-                deps.shell.openExternal( `https://buymeacoffee.com/aetherinox` );
+                deps.openExternalSafe( `https://buymeacoffee.com/aetherinox` );
             }
         },
         {
@@ -556,10 +548,10 @@ function newMenuMain()
                         .catch( console.error );
                 });
 
-                guiAbout.webContents.on( 'new-window', ( e, url ) =>
+                guiAbout.webContents.setWindowOpenHandler( ({ url }) =>
                 {
-                    e.preventDefault();
-                    deps.shell.openExternal( url );
+                    deps.openExternalSafe( url );
+                    return { action: 'deny' };
                 });
 
                 /**

@@ -46,11 +46,16 @@ class Storage
 
     /**
         get property value; remove all whitespace
+        returns `fallback` if the value is missing or not a string
     */
 
-    getSanitized( key )
+    getSanitized( key, fallback = '' )
     {
-        return this.data[ key ].replace( /\s/g, '' );
+        const value = this.data[ key ];
+        if ( typeof value !== 'string' )
+            return fallback;
+
+        return value.replace( /\s/g, '' );
     }
 
     /**

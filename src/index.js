@@ -4,7 +4,7 @@
     this is the main project file to initiate the electron app
 */
 
-import { app, BrowserWindow, dialog, ipcMain, Tray, shell, Menu, MenuItem, nativeImage } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Tray, shell, Menu, MenuItem, nativeImage, safeStorage } from 'electron';
 import path from 'path';
 import moment from 'moment';
 import chalk from 'chalk';
@@ -239,6 +239,18 @@ from within the app: App -> Settings
 }
 
 /**
+    Single Instance Lock
+
+    a second running instance would poll the same topics and show every notification twice.
+    if another instance already holds the lock; hand over to it and exit.
+*/
+
+if ( process.env.NODE_ENV !== 'test' && !app.requestSingleInstanceLock() )
+{
+    app.exit( 0 );
+}
+
+/**
     Debug > Print args
 */
 
@@ -296,6 +308,9 @@ const defPollrate = 60;                             // default polling rate
 const minPollrate = 5;                              // minimum poll rate to prevent rate limiting
 const maxPollrate = 3600;                           // maximum poll rate (1 hour)
 const maxRetries = 3;                               // maximum retry attempts for network requests
+const pollOverlap = 5;                              // seconds of overlap between polls so no message falls into a gap
+const maxMsgHistory = 1000;                         // number of message ids remembered for de-duplication
+const allowedExternalProtocols = [ 'http:', 'https:', 'mailto:' ];
 
 /**
     Define > Store Values
@@ -321,6 +336,79 @@ const store = new Storage(
         datetime: defDatetime
     }
 });
+
+/**
+    helper > api token
+
+    the api token is encrypted with the OS keychain (safeStorage) when available and stored as
+    `apiTokenEnc`. falls back to the plain `apiToken` key if encryption is not available on the system.
+    safeStorage can only be used after the app is ready.
+*/
+
+function getApiToken()
+{
+    const encrypted = store.get( 'apiTokenEnc' );
+    if ( encrypted && safeStorage.isEncryptionAvailable() )
+    {
+        try
+        {
+            return safeStorage.decryptString( Buffer.from( encrypted, 'base64' ) );
+        }
+        catch ( error )
+        {
+            Log.error( `core`, chalk.redBright( `[token]` ), chalk.white( `:  ` ),
+                chalk.redBright( `<msg>` ), chalk.gray( `Failed to decrypt stored api token` ),
+                chalk.redBright( `<error>` ), chalk.gray( `${ error.message }` ) );
+        }
+    }
+
+    return store.get( 'apiToken' ) || '';
+}
+
+function setApiToken( token )
+{
+    if ( token && safeStorage.isEncryptionAvailable() )
+    {
+        store.set( 'apiTokenEnc', safeStorage.encryptString( token ).toString( 'base64' ) );
+        store.set( 'apiToken', '' );
+    }
+    else
+    {
+        store.set( 'apiTokenEnc', '' );
+        store.set( 'apiToken', token || '' );
+    }
+}
+
+/**
+    helper > open external url
+
+    only hands http(s) and mailto links to the operating system. other schemes (file://, smb://,
+    custom protocol handlers) could be abused by a message posted to a subscribed topic.
+*/
+
+function openExternalSafe( url )
+{
+    let protocol;
+    try
+    {
+        protocol = new URL( url ).protocol;
+    }
+    catch ( error )
+    {
+        protocol = null;
+    }
+
+    if ( !allowedExternalProtocols.includes( protocol ) )
+    {
+        Log.warn( `core`, chalk.yellow( `[navigation]` ), chalk.white( `:  ` ),
+            chalk.yellowBright( `<msg>` ), chalk.gray( `Blocked opening external url with unsupported protocol` ),
+            chalk.yellowBright( `<url>` ), chalk.gray( `${ url }` ) );
+
+        return;
+    }
+
+    shell.openExternal( url );
+}
 
 /**
     helper > validate instance url
@@ -477,16 +565,21 @@ async function GetMessageData( uri )
         const controller = new AbortController();
         const timeoutId = setTimeout( () => controller.abort(), 30000 );    // 30 second timeout
 
+        const headers = {
+            Accept: 'application/json',
+            'User-Agent': `ntfy-desktop/${ appVer }`,
+            'Cache-Control': 'no-cache'
+        };
+
+        const apiToken = getApiToken();
+        if ( apiToken )
+            headers.Authorization = `Bearer ${ apiToken }`;
+
         const req = await fetch( uri,
         {
             method: 'GET',
             signal: controller.signal,
-            headers: {
-                Accept: 'application/json',
-                Authorization: `Bearer ${ store.get( 'apiToken' ) || '' }`,
-                'User-Agent': `ntfy-desktop/${ appVer }`,
-                'Cache-Control': 'no-cache'
-            }
+            headers
         });
 
         clearTimeout( timeoutId );
@@ -546,6 +639,7 @@ async function GetMessageData( uri )
 
 const msgHistory = [];
 let isPolling = false;              // prevent concurrent polling
+let lastPollStart = null;           // timestamp (ms) of the last successful poll
 
 async function GetMessages( )
 {
@@ -616,9 +710,16 @@ async function GetMessages( )
 
     /**
         Concatenate instance query url
+
+        `since` covers the full time since the last successful poll plus a small overlap, so messages
+        arriving between two polls (or during a failed / timed out poll) are not lost.
+        duplicates caused by the overlap are filtered out by msgHistory.
     */
 
-    let uri = `${ cfgInstanceURL }/${ cfgTopics }/json?since=${ cfgPollrate }s&poll=1`;
+    const pollStart = Date.now();
+    const since = lastPollStart === null ? cfgPollrate : Math.ceil( ( pollStart - lastPollStart ) / 1000 ) + pollOverlap;
+
+    let uri = `${ cfgInstanceURL.replace( /\/+$/, '' ) }/${ cfgTopics }/json?since=${ since }s&poll=1`;
 
     Log.debug( `core`, chalk.yellow( `[messages]` ), chalk.white( `⚙️` ),
         chalk.blueBright( `<msg>` ), chalk.gray( `fetching messages from url` ),
@@ -665,18 +766,7 @@ async function GetMessages( )
         return;
     }
 
-    /**
-        will be thrown if the instance url does not return valid json (ntfy server possibly down?)
-    */
-
-    if ( Utils.isJsonString( json ) === false )
-    {
-        Log.error( `core`, chalk.redBright( `[messages]` ), chalk.white( `:  ` ),
-            chalk.redBright( `<msg>` ), chalk.gray( `Polling for new messages returned invalid json; skipping fetch. Change your instance URL to a valid ntfy instance.` ),
-            chalk.redBright( `<func>` ), chalk.gray( `GetMessages()` ) );
-
-        return;
-    }
+    lastPollStart = pollStart;
 
     Log.info( `core`, chalk.yellow( `[messages]` ), chalk.white( `:  ` ),
         chalk.blueBright( `<msg>` ), chalk.gray( `Fetching new messages` ),
@@ -700,6 +790,20 @@ async function GetMessages( )
 
     for ( let i = 0; i < json.length; i++ )
     {
+        /**
+            each line is its own json object. a line that does not parse means the instance url does
+            not point to a valid ntfy instance (or the server is having issues); skip just that line.
+        */
+
+        if ( Utils.isJsonString( json[ i ] ) === false )
+        {
+            Log.error( `core`, chalk.redBright( `[messages]` ), chalk.white( `:  ` ),
+                chalk.redBright( `<msg>` ), chalk.gray( `Polling for new messages returned invalid json; skipping entry. Change your instance URL to a valid ntfy instance.` ),
+                chalk.redBright( `<func>` ), chalk.gray( `GetMessages()` ) );
+
+            continue;
+        }
+
         const object = JSON.parse( json[ i ] );
         const id = object.id;
         const type = object.event;
@@ -763,8 +867,7 @@ async function GetMessages( )
             convert unix timestamp into human readable
         */
 
-        // eslint-disable-next-line no-constant-binary-expression
-        const dateHuman = moment.unix( time ).format( store.get( 'datetime' || defDatetime ) );
+        const dateHuman = moment.unix( time ).format( store.get( 'datetime' ) || defDatetime );
 
         /**
             debugging to console to show the status of messages
@@ -798,6 +901,8 @@ async function GetMessages( )
             });
 
             msgHistory.push( id );
+            if ( msgHistory.length > maxMsgHistory )
+                msgHistory.splice( 0, msgHistory.length - maxMsgHistory );
 
             /**
                 Calcuate badge count
@@ -848,9 +953,26 @@ function setStatusStrMsg( value )
     statusStrMsg = value;
 }
 
-function setPollInterval( value )
+/**
+    polling > (re)start
+
+    reads the poll rate from the store, clamps it and replaces any running poll interval.
+*/
+
+function startPolling()
 {
-    pollInterval = value;
+    let cfgPollrate = store.get( 'pollrate' ) || defPollrate;
+    cfgPollrate = Math.max( minPollrate, Math.min( maxPollrate, cfgPollrate ) );
+    const fetchInterval = ( cfgPollrate * 1000 ) + 600;                             // add 600ms buffer
+
+    if ( pollInterval )
+        clearInterval( pollInterval );
+
+    pollInterval = setInterval( GetMessages, fetchInterval );
+
+    Log.info( `core`, chalk.yellow( `[polling]` ), chalk.white( `:  ` ),
+        chalk.blueBright( `<msg>` ), chalk.gray( `Started message polling` ),
+        chalk.blueBright( `<interval>` ), chalk.gray( `${ fetchInterval }ms` ) );
 }
 
 /**
@@ -876,18 +998,17 @@ function initializeMenus()
         prompt,
         activeDevTools,
         IsValidUrl,
-        statusBadURL,
         setStatusBadURL,
-        statusStrMsg,
         setStatusStrMsg,
-        pollInterval,
-        setPollInterval,
+        startPolling,
+        getApiToken,
+        setApiToken,
+        openExternalSafe,
         GetMessages,
         Log,
         chalk,
         toasted,
         UpdateBadge,
-        shell,
         packageJson,
         appTitle,
         appVer,
@@ -954,6 +1075,13 @@ function ready()
 {
     // Initialize main process logging first
     initializeMainProcessLogging();
+
+    /**
+        migrate a plain-text api token from older versions to encrypted storage
+    */
+
+    if ( store.get( 'apiToken' ) && safeStorage.isEncryptionAvailable() )
+        setApiToken( store.get( 'apiToken' ) );
 
     /**
         new window
@@ -1149,15 +1277,15 @@ function ready()
     });
 
     /**
-        Event > New Window
+        Event > Window Open
 
         buttons leading to external websites should open in user browser (window.open() / target=_blank)
     */
 
-    guiMain.webContents.on( 'new-window', ( e, url ) =>
+    guiMain.webContents.setWindowOpenHandler( ({ url }) =>
     {
-        e.preventDefault();
-        shell.openExternal( url );
+        openExternalSafe( url );
+        return { action: 'deny' };
     });
 
     /**
@@ -1183,7 +1311,7 @@ function ready()
             if ( targetHost !== instanceHost && targetHost !== officialHost )
             {
                 e.preventDefault();
-                shell.openExternal( url );
+                openExternalSafe( url );
             }
         }
         catch ( error )
@@ -1242,7 +1370,7 @@ function ready()
 
                     const span = document.createElement("span");
                     span.setAttribute("class","ntfy-notify error");
-                    span.textContent = '${ statusStrMsg }';
+                    span.textContent = ${ JSON.stringify( String( statusStrMsg ) ) };
 
                     div.appendChild(span);
                     document.body.appendChild(div);
@@ -1304,47 +1432,59 @@ function ready()
 
         /**
             Input > Dev Tools (CTRL + SHIFT + I || F12)
+
+            only available when developer tools are enabled (--devtools or in settings).
         */
 
-        if ( ( ( bHotkeysEnabled === 1 || store.getInt( 'bHotkeys' ) === 1 ) && input.control && input.shift ) || input.key === 'F12' )
+        const bDevToolsEnabled = bDevTools === 1 || store.getInt( 'bDevTools' ) === 1;
+        const bHotkeys = bHotkeysEnabled === 1 || store.getInt( 'bHotkeys' ) === 1;
+
+        if ( bDevToolsEnabled && input.type === 'keyDown' &&
+            ( input.key === 'F12' || ( bHotkeys && input.control && input.shift && input.key === 'I' ) ) )
         {
-            if ( input.type === 'keyDown' && ( input.key === 'I' || input.key === 'F12' ) )
-            {
-                guiMain.webContents.toggleDevTools();
-                guiMain.webContents.on( 'devtools-opened', () =>
-                {
-                    guiMain.webContents.devToolsWebContents
-                        .executeJavaScript(
-                            `
-                            new Promise((resolve)=> {
-                                let keysPressed = {};
-
-                                addEventListener('keydown', (e) => {
-                                    if (e.key === 'F12') {
-                                        resolve();
-                                    }
-                                }, { once: true });
-
-                                addEventListener('keydown', (e) => {
-                                    keysPressed[e.key] = true;
-                                    if (keysPressed['Control'] && keysPressed['Shift'] && e.key == 'I') {
-                                        resolve();
-                                    }
-                                });
-
-                                addEventListener('keyup', (e) => {
-                                    delete keysPressed[e.key];
-                                });
-                            })
-                        `
-                        )
-                        .then( () =>
-                        {
-                            guiMain.webContents.toggleDevTools();
-                        });
-                });
-            }
+            e.preventDefault();
+            guiMain.webContents.toggleDevTools();
         }
+    });
+
+    /**
+        Event > Dev Tools Opened
+
+        once dev tools are focused, keystrokes go to the dev tools window instead of the main window;
+        listen there so the same hotkey closes them again.
+    */
+
+    guiMain.webContents.on( 'devtools-opened', () =>
+    {
+        guiMain.webContents.devToolsWebContents
+            .executeJavaScript(
+                `
+                new Promise((resolve)=> {
+                    let keysPressed = {};
+
+                    addEventListener('keydown', (e) => {
+                        if (e.key === 'F12') {
+                            resolve();
+                        }
+                    }, { once: true });
+
+                    addEventListener('keydown', (e) => {
+                        keysPressed[e.key] = true;
+                        if (keysPressed['Control'] && keysPressed['Shift'] && e.key == 'I') {
+                            resolve();
+                        }
+                    });
+
+                    addEventListener('keyup', (e) => {
+                        delete keysPressed[e.key];
+                    });
+                })
+            `
+            )
+            .then( () =>
+            {
+                guiMain.webContents.closeDevTools();
+            });
     });
 
     /**
@@ -1475,21 +1615,9 @@ function ready()
 
     /**
         Run timer every X seconds to check for new messages
-        Store interval reference for proper cleanup
     */
 
-    let cfgPollrate = store.get( 'pollrate' ) || defPollrate;
-    cfgPollrate = Math.max( minPollrate, Math.min( maxPollrate, cfgPollrate ) );
-    const fetchInterval = ( cfgPollrate * 1000 ) + 600;                             // add 600ms buffer
-
-    if ( pollInterval )
-        clearInterval( pollInterval );
-
-    pollInterval = setInterval( GetMessages, fetchInterval );
-
-    Log.info( `core`, chalk.yellow( `[polling]` ), chalk.white( `:  ` ),
-        chalk.blueBright( `<msg>` ), chalk.gray( `Started message polling` ),
-        chalk.blueBright( `<interval>` ), chalk.gray( `${ fetchInterval }ms` ) );
+    startPolling();
 
     /**
         check stored setting for developer tools and set state when
@@ -1554,10 +1682,33 @@ app.on( 'before-quit', () =>
 
     isShuttingDown = true;
 
+    /**
+        quit was requested from outside the app (cmd+q, os logoff / shutdown);
+        let the main window close instead of hiding it in the tray
+    */
+
+    app.isQuiting = true;
+
     if ( pollInterval )
     {
         clearInterval( pollInterval );
         pollInterval = null;
+    }
+});
+
+/**
+    App > Second Instance
+
+    another instance was started; bring this one to the front instead
+*/
+
+app.on( 'second-instance', () =>
+{
+    if ( guiMain && !guiMain.isDestroyed() )
+    {
+        bWinHidden = 0;
+        guiMain.show();
+        guiMain.focus();
     }
 });
 

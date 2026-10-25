@@ -159,9 +159,12 @@ describe( 'Menu Class Tests', () =>
             defPollrate: 30,
             minPollrate: 5,
             maxPollrate: 3600,
-            statusBadURL: false,
-            statusStrMsg: '',
-            pollInterval: null,
+            setStatusBadURL: vi.fn(),
+            setStatusStrMsg: vi.fn(),
+            startPolling: vi.fn(),
+            getApiToken: vi.fn( () => 'test-token' ),
+            setApiToken: vi.fn(),
+            openExternalSafe: vi.fn(),
             packageJson:
             {
                 homepage: 'https://github.com/test/repo'
@@ -247,7 +250,7 @@ describe( 'Menu Class Tests', () =>
                         }),
                         expect.objectContaining(
                         {
-                            label: 'Localhost Mode'
+                            label: 'Skip URL Validation'
                         })
                     ] )
                 }),
@@ -618,16 +621,16 @@ describe( 'Menu Class Tests', () =>
             const updateItem = helpMenu.submenu.find( ( item ) => item.label === 'Check for Updates' );
             expect( updateItem.click ).toBeDefined();
             updateItem.click();
-            expect( mockShell.openExternal ).toHaveBeenCalledWith( 'https://github.com/test/repo' );
+            expect( mockDeps.openExternalSafe ).toHaveBeenCalledWith( 'https://github.com/test/repo' );
 
             // Test Sponsor
             const sponsorItem = helpMenu.submenu.find( ( item ) => item.label === 'Sponsor' );
             expect( sponsorItem.click ).toBeDefined();
             sponsorItem.click();
-            expect( mockShell.openExternal ).toHaveBeenCalledWith( 'https://buymeacoffee.com/aetherinox' );
+            expect( mockDeps.openExternalSafe ).toHaveBeenCalledWith( 'https://buymeacoffee.com/aetherinox' );
         });
 
-        it( 'should test about dialog new-window handler', async() =>
+        it( 'should test about dialog window open handler', async() =>
         {
             const helpMenu = newMenuMain().find( ( item ) => item.id === 'help' );
             const aboutItem = helpMenu.submenu.find( ( item ) => item.id === 'about' );
@@ -638,6 +641,7 @@ describe( 'Menu Class Tests', () =>
                 webContents:
                 {
                     executeJavaScript: vi.fn().mockResolvedValue( undefined ),
+                    setWindowOpenHandler: vi.fn(),
                     on: vi.fn()
                 },
                 setMenu: vi.fn()
@@ -647,25 +651,56 @@ describe( 'Menu Class Tests', () =>
 
             await aboutItem.click();
 
-            // Get the new-window handler
-            const newWindowCall = mockAboutWindow.webContents.on.mock.calls.find(
-                ( call ) => call[ 0 ] === 'new-window'
-            );
-            expect( newWindowCall ).toBeDefined();
+            expect( mockAboutWindow.webContents.setWindowOpenHandler ).toHaveBeenCalled();
+            const windowOpenHandler = mockAboutWindow.webContents.setWindowOpenHandler.mock.calls[ 0 ][ 0 ];
 
-            const newWindowHandler = newWindowCall[ 1 ];
+            expect( windowOpenHandler({ url: 'https://example.com' }) ).toEqual({ action: 'deny' });
+            expect( mockDeps.openExternalSafe ).toHaveBeenCalledWith( 'https://example.com' );
+        });
 
-            // Mock event object
-            const mockEvent =
-            {
-                preventDefault: vi.fn()
-            };
+        it( 'should restart polling through main process when poll rate changes', async() =>
+        {
+            mockPrompt.mockResolvedValueOnce( [ '0', 'YYYY-MM-DD', '120' ] );
 
-            // Test the handler
-            newWindowHandler( mockEvent, 'https://example.com' );
+            const appMenu = newMenuMain().find( ( item ) => item.id === 'app' );
+            const settingsMenu = appMenu.submenu.find( ( item ) => item.id === 'settings' );
+            const notificationSettings = settingsMenu.submenu.find( ( item ) => item.label === 'Notifications' );
 
-            expect( mockEvent.preventDefault ).toHaveBeenCalled();
-            expect( mockShell.openExternal ).toHaveBeenCalledWith( 'https://example.com' );
+            await notificationSettings.click();
+            await new Promise( ( resolve ) => setTimeout( resolve, 0 ) );
+
+            expect( mockStore.set ).toHaveBeenCalledWith( 'pollrate', 120 );
+            expect( mockDeps.startPolling ).toHaveBeenCalled();
+        });
+
+        it( 'should update bad url status through main process setters', async() =>
+        {
+            mockPrompt.mockResolvedValueOnce( [ 'https://example.invalid', '0' ] );
+            mockDeps.IsValidUrl.mockImplementationOnce( () => Promise.resolve( true ) );
+
+            const appMenu = newMenuMain().find( ( item ) => item.id === 'app' );
+            const settingsMenu = appMenu.submenu.find( ( item ) => item.id === 'settings' );
+            const instanceSettings = settingsMenu.submenu.find( ( item ) => item.label === 'Instance' );
+
+            await instanceSettings.click();
+            await new Promise( ( resolve ) => setTimeout( resolve, 0 ) );
+
+            expect( mockDeps.setStatusBadURL ).toHaveBeenCalledWith( false );
+        });
+
+        it( 'should store api token through main process helper', async() =>
+        {
+            mockPrompt.mockResolvedValueOnce( 'tk_new' );
+
+            const appMenu = newMenuMain().find( ( item ) => item.id === 'app' );
+            const settingsMenu = appMenu.submenu.find( ( item ) => item.id === 'settings' );
+            const apiTokenSettings = settingsMenu.submenu.find( ( item ) => item.label === 'API Token' );
+
+            await apiTokenSettings.click();
+            await new Promise( ( resolve ) => setTimeout( resolve, 0 ) );
+
+            expect( mockDeps.setApiToken ).toHaveBeenCalledWith( 'tk_new' );
+            expect( mockStore.set ).not.toHaveBeenCalledWith( 'apiToken', expect.anything() );
         });
     });
 });
