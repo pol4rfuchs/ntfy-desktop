@@ -6,7 +6,6 @@
     "homepage": "https://github.com/aetherinox/ntfy-desktop",
     "license": "GPLv3",
     "scripts": {
-        "start": "echo You are trying to run from the wrong directory, cd to ./src",
         "contrib:init": "npx --yes all-contributors init",
         "contrib:add": "npx --yes all-contributors add",
         "contrib:generate": "npx --yes all-contributors generate"
