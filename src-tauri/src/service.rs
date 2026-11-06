@@ -105,7 +105,11 @@ pub fn send_notification(title: String, body: String, persistent: bool, open_url
         }
         #[cfg(target_os = "windows")]
         {
-            n.app_id("com.ntfydesktop.id");
+            // Only an installed app has a registered toast id; when started
+            // via `cargo run` keep notify-rust's default id so toasts show.
+            if !cfg!(debug_assertions) {
+                n.app_id("com.ntfydesktop.id");
+            }
         }
         #[cfg(target_os = "macos")]
         {
