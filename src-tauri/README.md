@@ -24,6 +24,7 @@ cargo run                      # dev run
 cargo test                     # unit tests
 cargo install tauri-cli --version "^2" --locked
 cargo tauri build              # installers in target/release/bundle
+# or from the repository root: ./build.sh (Linux/macOS) / build.bat (Windows)
 ```
 
 ## Layout
@@ -40,6 +41,7 @@ cargo tauri build              # installers in target/release/bundle
 
 ## Known differences to the Electron version
 
+* Notifications show the ntfy message title when the message has one (`<title>`, then message, topic and date).
 * Clicking a notification opens the instance only on Linux; Windows/macOS toasts via `notify-rust` have no click callback.
 * `allowRunningInsecureContent` has no equivalent: an HTTPS page talking to a plain-HTTP endpoint may be blocked by the system webview.
 * The five settings prompts are one local settings window opened at the matching section.

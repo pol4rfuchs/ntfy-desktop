@@ -23,7 +23,7 @@ env:
 jobs:
 
     # ─────────────────────────────────────────────────────────────
-    #   Get version from src/package.json
+    #   Version from src-tauri/tauri.conf.json (must match Cargo.toml)
     # ─────────────────────────────────────────────────────────────
 
     init:
@@ -33,205 +33,122 @@ jobs:
             version: ${{ steps.ver.outputs.version }}
         steps:
             - uses: actions/checkout@v4
-            - name: Read package.json version
+            - name: Read version
               id: ver
-              working-directory: ./src
               run: |
-                  VER=$(jq -r '.version' package.json)
+                  VER=$(jq -r '.version' src-tauri/tauri.conf.json)
+                  CARGO_VER=$(grep -m1 '^version' src-tauri/Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
+                  if [ "$VER" != "$CARGO_VER" ]; then
+                      echo "::error::tauri.conf.json ($VER) and Cargo.toml ($CARGO_VER) versions differ"
+                      exit 1
+                  fi
                   echo "version=$VER" >> "$GITHUB_OUTPUT"
                   echo "Version: $VER"
 
     # ─────────────────────────────────────────────────────────────
-    #   Lint & unit tests
+    #   Rust unit tests + clippy
     # ─────────────────────────────────────────────────────────────
 
     test:
-        name: '🧪 Lint & Test'
-        runs-on: ubuntu-latest
-        env:
-            ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
-        steps:
-            - uses: actions/checkout@v4
-
-            - uses: actions/setup-node@v4
-              with:
-                  node-version: '22.x'
-                  cache: 'npm'
-                  cache-dependency-path: src/package-lock.json
-
-            - name: Install dependencies
-              working-directory: ./src
-              run: npm ci
-
-            - name: Lint
-              working-directory: ./src
-              run: npm run lint
-
-            - name: Unit tests
-              working-directory: ./src
-              run: npx vitest run
-
-    # ─────────────────────────────────────────────────────────────
-    #   Build Windows (cross-compiled on ubuntu)
-    # ─────────────────────────────────────────────────────────────
-
-    build-windows:
-        name: '🪟 Build Windows'
-        needs: [ init, test ]
-        runs-on: ubuntu-latest
+        name: '🧪 Rust tests'
+        runs-on: ubuntu-22.04
         timeout-minutes: 30
-        env:
-            VERSION: ${{ needs.init.outputs.version }}
         steps:
             - uses: actions/checkout@v4
 
-            - uses: actions/setup-node@v4
-              with:
-                  node-version: '22.x'
-
-            - name: Install dependencies
+            - name: Install system libraries
               run: |
-                  mkdir -p build dist
-                  # retry stalled mirror downloads instead of hanging until the job timeout
+                  # retry stalled mirror downloads instead of hanging for tens of minutes
                   APT_OPTS="-o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30"
                   sudo apt-get $APT_OPTS update
-                  sudo apt-get $APT_OPTS install -y wine64
-                  sudo ln -sf /usr/bin/wine /usr/bin/wine64
-                  cd src
-                  npm ci
-                  npm install -g @electron/packager
+                  sudo apt-get $APT_OPTS install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev libdbus-1-dev pkg-config
 
-            - name: Build Windows binaries
-              working-directory: ./src
-              run: npm run build:lin:windows
-
-            - name: Package ZIPs
-              run: |
-                  VER="${VERSION}"
-                  PRJ="${PROJECT_NAME}"
-
-                  if [ "$RC_RELEASE" = "true" ]; then
-                      SUFFIX="-rc.${RC_VERSION}"
-                  else
-                      SUFFIX=""
-                  fi
-
-                  for ARCH in arm64 x64; do
-                      LABEL=$([[ "$ARCH" == "x64" ]] && echo "amd64" || echo "$ARCH")
-                      (cd build/${PRJ}-win32-${ARCH} && zip -r - .) > ${PRJ}-${VER}${SUFFIX}-win32-${LABEL}.zip
-                      echo "✅ ${PRJ}-${VER}${SUFFIX}-win32-${LABEL}.zip"
-                  done
-
-            - uses: actions/upload-artifact@v4
+            - uses: dtolnay/rust-toolchain@stable
+            - uses: Swatinem/rust-cache@v2
               with:
-                  name: windows-zips
-                  path: '*.zip'
-                  retention-days: 7
+                  workspaces: src-tauri
+
+            - name: Unit tests
+              working-directory: ./src-tauri
+              run: cargo test --locked
+
+            - name: Clippy
+              working-directory: ./src-tauri
+              run: cargo clippy --locked -- -D warnings
 
     # ─────────────────────────────────────────────────────────────
-    #   Build Linux (cross-compiled on ubuntu)
+    #   Build installers (one job per operating system)
     # ─────────────────────────────────────────────────────────────
 
-    build-linux:
-        name: '🐧 Build Linux'
+    build:
+        name: '📦 Build ${{ matrix.label }}'
         needs: [ init, test ]
-        runs-on: ubuntu-latest
-        timeout-minutes: 30
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - { label: windows-x64,      os: windows-latest, args: '' }
+                    - { label: linux-amd64,      os: ubuntu-22.04,   args: '' }
+                    - { label: macos-universal,  os: macos-latest,   args: '--target universal-apple-darwin' }
+        runs-on: ${{ matrix.os }}
+        timeout-minutes: 45
         env:
             VERSION: ${{ needs.init.outputs.version }}
         steps:
             - uses: actions/checkout@v4
 
-            - uses: actions/setup-node@v4
-              with:
-                  node-version: '22.x'
-
-            - name: Install dependencies
+            - name: Install system libraries (Linux)
+              if: matrix.os == 'ubuntu-22.04'
               run: |
-                  mkdir -p build dist
-                  cd src
-                  npm ci
-                  npm install -g @electron/packager
+                  APT_OPTS="-o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30"
+                  sudo apt-get $APT_OPTS update
+                  sudo apt-get $APT_OPTS install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev libdbus-1-dev pkg-config
 
-            - name: Build Linux binaries
-              working-directory: ./src
-              run: npm run build:lin:linux
-
-            - name: Package ZIPs
-              run: |
-                  VER="${VERSION}"
-                  PRJ="${PROJECT_NAME}"
-
-                  if [ "$RC_RELEASE" = "true" ]; then
-                      SUFFIX="-rc.${RC_VERSION}"
-                  else
-                      SUFFIX=""
-                  fi
-
-                  for ARCH in arm64 x64; do
-                      LABEL=$([[ "$ARCH" == "x64" ]] && echo "amd64" || echo "$ARCH")
-                      (cd build/${PRJ}-linux-${ARCH} && zip -r - .) > ${PRJ}-${VER}${SUFFIX}-linux-${LABEL}.zip
-                      echo "✅ ${PRJ}-${VER}${SUFFIX}-linux-${LABEL}.zip"
-                  done
-
-            - uses: actions/upload-artifact@v4
+            - uses: dtolnay/rust-toolchain@stable
               with:
-                  name: linux-zips
-                  path: '*.zip'
-                  retention-days: 7
-
-    # ─────────────────────────────────────────────────────────────
-    #   Build macOS (must run on macos runner)
-    # ─────────────────────────────────────────────────────────────
-
-    build-macos:
-        name: '🍎 Build macOS'
-        needs: [ init, test ]
-        runs-on: macos-latest
-        timeout-minutes: 30
-        env:
-            VERSION: ${{ needs.init.outputs.version }}
-        steps:
-            - uses: actions/checkout@v4
-
-            - uses: actions/setup-node@v4
+                  targets: ${{ matrix.os == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+            - uses: Swatinem/rust-cache@v2
               with:
-                  node-version: '22.x'
+                  workspaces: src-tauri
 
-            - name: Install dependencies
-              working-directory: ./src
-              run: |
-                  cd ..
-                  mkdir -p build dist
-                  cd src
-                  npm ci
-                  npm install -g @electron/packager
+            - name: Install Tauri CLI
+              run: cargo install tauri-cli --version "^2" --locked
 
-            - name: Build macOS binaries
-              working-directory: ./src
-              run: npm run build:lin:mac
+            - name: Build installers
+              working-directory: ./src-tauri
+              run: cargo tauri build ${{ matrix.args }}
 
-            - name: Package ZIPs
+            - name: Collect and rename installers
+              shell: bash
               run: |
                   VER="${VERSION}"
                   PRJ="${PROJECT_NAME}"
+                  if [ "$RC_RELEASE" = "true" ]; then SUFFIX="-rc.${RC_VERSION}"; else SUFFIX=""; fi
+                  BASE="${PRJ}-${VER}${SUFFIX}-${{ matrix.label }}"
 
-                  if [ "$RC_RELEASE" = "true" ]; then
-                      SUFFIX="-rc.${RC_VERSION}"
-                  else
-                      SUFFIX=""
-                  fi
-
-                  for ARCH in arm64 x64; do
-                      LABEL=$([[ "$ARCH" == "x64" ]] && echo "amd64" || echo "$ARCH")
-                      (cd build/${PRJ}-darwin-${ARCH} && zip -r - .) > ${PRJ}-${VER}${SUFFIX}-darwin-${LABEL}.zip
-                      echo "✅ ${PRJ}-${VER}${SUFFIX}-darwin-${LABEL}.zip"
+                  mkdir -p dist
+                  find src-tauri/target -type d -path '*release/bundle' | while read -r B; do
+                      find "$B" -type f \( -name '*-setup.exe' -o -name '*.msi' -o -name '*.deb' -o -name '*.rpm' -o -name '*.AppImage' -o -name '*.dmg' \) | while read -r F; do
+                          case "$F" in
+                              *-setup.exe) EXT="-setup.exe" ;;
+                              *.msi)       EXT=".msi" ;;
+                              *.deb)       EXT=".deb" ;;
+                              *.rpm)       EXT=".rpm" ;;
+                              *.AppImage)  EXT=".AppImage" ;;
+                              *.dmg)       EXT=".dmg" ;;
+                          esac
+                          cp "$F" "dist/${BASE}${EXT}"
+                          echo "✅ dist/${BASE}${EXT}"
+                      done
                   done
+                  ls -l dist
+                  [ -n "$(ls -A dist)" ] || { echo "::error::no installers found"; exit 1; }
 
             - uses: actions/upload-artifact@v4
               with:
-                  name: macos-zips
-                  path: '*.zip'
+                  name: installers-${{ matrix.label }}
+                  path: dist/*
+                  if-no-files-found: error
                   retention-days: 7
 
     # ─────────────────────────────────────────────────────────────
@@ -240,7 +157,7 @@ jobs:
 
     release:
         name: '🚀 GitHub Release'
-        needs: [ init, build-windows, build-linux, build-macos ]
+        needs: [ init, build ]
         runs-on: ubuntu-latest
         env:
             VERSION: ${{ needs.init.outputs.version }}
@@ -258,8 +175,8 @@ jobs:
             - name: Generate checksums
               run: |
                   cd artifacts
-                  sha256sum *.zip > SHA256SUMS.txt
-                  sha1sum   *.zip > SHA1SUMS.txt
+                  sha256sum * > SHA256SUMS.txt
+                  sha1sum   $(ls | grep -v SUMS) > SHA1SUMS.txt
                   echo "--- SHA256SUMS ---"
                   cat SHA256SUMS.txt
 
@@ -273,6 +190,4 @@ jobs:
                   prerelease: ${{ env.RC_RELEASE == 'true' }}
                   generate_release_notes: true
                   files: |
-                      artifacts/*.zip
-                      artifacts/SHA256SUMS.txt
-                      artifacts/SHA1SUMS.txt
+                      artifacts/*

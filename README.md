@@ -4,7 +4,7 @@
 
 <br />
 
-<p>A ntfy.sh desktop client built with Electron which supports Windows, Linux, and MacOSX. This client rests in your taskbar tray and allows you to receive push notifications to your desktop without requiring you to leave your browser open.</p>
+<p>A ntfy.sh desktop client built with Tauri (Rust) which supports Windows, Linux, and MacOSX. This client rests in your taskbar tray and allows you to receive push notifications to your desktop without requiring you to leave your browser open.</p>
 
 <p float="left">
   <img style="padding-right:15px;" src="https://github.com/user-attachments/assets/b6a34bc3-dbbf-4249-b3d2-d113a21cca66" width="300" />
@@ -85,7 +85,7 @@
 
 # About
 
-This project allows you to access the official free / paid notification service [ntfy.sh](https://ntfy.sh/), or your own self-hosted version of ntfy from within a desktop application which utilizes Electron as the wrapper.
+This project allows you to access the official free / paid notification service [ntfy.sh](https://ntfy.sh/), or your own self-hosted version of ntfy from within a desktop application which uses the system webview (Tauri / Rust) as the wrapper. The previous Electron version is still available in the `src` folder as a legacy build.
 
 <br />
 
@@ -124,6 +124,9 @@ To install Ntfy on your system, visit the following links:
     - Defaults: `news, announcements`
 - Supports Ntfy API token
 - Taskbar unread message count / count
+  - Where the platform has no badge API, the count is shown in the tray tooltip
+- Notifications show the ntfy message title when a message has one
+- API token is stored in the system keychain (Windows Credential Manager, macOS Keychain, Secret Service on Linux)
 - Includes [command-line arguments](#cli-arguments)
 
 <br />
@@ -157,7 +160,7 @@ You can set the polling rate lower without any limitations or rate limits:
 
 ## Architecture Outline
 
-We provide numerous different architectures you can download this app for. Below is a list:
+The official releases are built for **Windows x64** (installer `.exe` and `.msi`), **Linux amd64** (`.deb`, `.rpm`, `.AppImage`) and **macOS universal** (`.dmg`, Intel and Apple Silicon). Other architectures can be built from source on a machine of that architecture. The table below lists common architectures for reference:
 
 <br />
 
@@ -222,17 +225,19 @@ This client allows you to utilize the following command-line arguments with ntfy
 | Argument | Description | Available as setting |
 | --- | --- | --- |
 | `--hidden` | Start app hidden in tray, suitable for auto-starting on system login/boot | ✅ |
-| `--hotkey` | Start app with hotkeys enabled | ✅ |
-| `--quit` | Top-right close button will completely exit app instead of minimize to tray | ✅ |
+| `--hotkeys` | Start app with hotkeys enabled | ✅ |
+| `--terminate` | Top-right close button will completely exit app instead of minimize to tray | ✅ |
 | `--devtools` | Start app with developer tools in `App` menu | ✅ |
-| `--env <env_name>` | Define startup environment | ❌ |
+| `--env <env_name>` | Define startup environment (`production`, `development`, `test`) | ❌ |
+| `--help`, `-h` | Print the argument list and exit | ❌ |
 
 <br />
 
-If you are running ntfy-desktop from node, you can pass arguments using the following example:
+If you are running ntfy-desktop from source, you can pass arguments using the following example:
 
 ```shell ignore
-npm run start -- --hidden --hotkey
+cd src-tauri
+cargo run -- --hidden --hotkeys
 ```
 
 <br />
@@ -240,14 +245,14 @@ npm run start -- --hidden --hotkey
 If using the pre-built binaries, pass arguments by opening your terminal / command prompt, and passing the arguments using:
 
 ```shell
-# Windows
-ntfy-desktop-win32-x64/ntfy-desktop.exe --hidden --hotkey
+# Windows (default install path)
+"%LOCALAPPDATA%\Ntfy Desktop\ntfy-desktop.exe" --hidden --hotkeys
 
 # Linux
-ntfy-desktop-linux-x64/ntfy-desktop --hidden --hotkey
+ntfy-desktop --hidden --hotkeys
 
 # MacOS
-ntfy-desktop-darwin-x64/ntfy-desktop.app/Contents/MacOS/ntfy-desktop --hidden --hotkey
+"/Applications/Ntfy Desktop.app/Contents/MacOS/ntfy-desktop" --hidden --hotkeys
 ```
 
 <br />
@@ -258,13 +263,74 @@ ntfy-desktop-darwin-x64/ntfy-desktop.app/Contents/MacOS/ntfy-desktop --hidden --
 
 # Build
 
-There are numerous ways to build this application. 
+Ntfy Desktop is built with [Tauri 2](https://tauri.app) (Rust). The settings file (`prefs.json`) is the same as in the old Electron version, so existing settings carry over. **The API token has to be entered once again**, because it is now stored in the system keychain.
+
+<br />
+
+## Requirements
+
+| System | Needs |
+| --- | --- |
+| **All** | [Rust](https://rustup.rs) (stable) |
+| **Windows** | "Desktop development with C++" from the Visual Studio Build Tools; WebView2 (preinstalled on Windows 11) |
+| **Linux** | `sudo apt install libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev libdbus-1-dev pkg-config` |
+| **macOS** | Xcode command line tools: `xcode-select --install` |
+
+<br />
+
+## Build Script
+
+```shell
+git clone https://github.com/pol4rfuchs/ntfy-desktop.git
+cd ntfy-desktop
+
+# Linux / macOS
+./build.sh
+
+# Windows (PowerShell or Command Prompt)
+build.bat
+```
+
+The script runs the unit tests and builds the installers for the operating system you are on. Tauri does not cross-compile desktop installers, so build on each target system, or use the GitHub workflow below. The installers are written to `src-tauri/target/release/bundle`.
+
+<br />
+
+## Run From Source
+
+```shell
+cd src-tauri
+cargo run
+```
+
+<br />
+
+## GitHub Workflows
+
+| Workflow | Trigger | What it does |
+| --- | --- | --- |
+| `Build Tauri (Rust)` | manual, or a pull request touching `src-tauri/` or `ui/` | runs Rust tests and Clippy, builds installers for Windows, Linux and macOS and attaches them to the run as artifacts |
+| `Build & Release` | manual | same builds, then publishes a GitHub release with checksums. The version is read from `src-tauri/tauri.conf.json` and must match `src-tauri/Cargo.toml` |
+| `Build & Release (Electron, legacy)` | manual | the old Electron release process |
+
+<br />
+
+More details are in [`src-tauri/README.md`](src-tauri/README.md).
+
+<br />
+
+---
+
+<br />
+
+# Build (Legacy Electron)
+
+The Electron version in the `src` folder is still available. It uses the scripts `build-electron.bat` and `build-electron.sh` (formerly `build.bat` / `build.sh`).
 
 <br />
 
 ## Method: Build Script
 
-This method makes use of the `build.bat` and `build.sh` scripts provided in this repository. Find your operating system below and follow the instructions:
+This method makes use of the `build-electron.bat` and `build-electron.sh` scripts provided in this repository. Find your operating system below and follow the instructions:
 
 - [Windows](#windows)
 - [Linux](#linux)
@@ -292,7 +358,7 @@ npm install
 npm install -g electron
 
 # build ntfy
-./build.bat
+./build-electron.bat
 ```
 
 <br />
@@ -321,10 +387,10 @@ npm install -g electron-packager
 sudo ln -s /usr/bin/wine /usr/bin/wine64
 
 # change permissions
-sudo chmod +x build.sh
+sudo chmod +x build-electron.sh
 
 # build ntfy
-./build.sh
+./build-electron.sh
 ```
 
 <br />
@@ -372,10 +438,10 @@ npm install -g electron-packager
 sudo ln -s /usr/bin/wine /usr/bin/wine64
 
 # change permissions
-sudo chmod +x build.sh
+sudo chmod +x build-electron.sh
 
 # build ntfy
-./build.sh
+./build-electron.sh
 ```
 
 <br />
@@ -530,7 +596,21 @@ npm run build:lin:mac
 
 # Tests
 
-This repository contains tests in order to test the functionality of this project. We utilize a Github workflow to handle the automation, however, you can run the tests locally.
+## Rust Tests (Tauri version)
+
+```shell
+cd src-tauri
+cargo test
+cargo clippy -- -D warnings
+```
+
+They run automatically in the `Build Tauri (Rust)` workflow.
+
+<br />
+
+## Electron Tests (legacy)
+
+This repository contains tests in order to test the functionality of the legacy Electron version. We utilize a Github workflow to handle the automation, however, you can run the tests locally.
 
 <br />
 

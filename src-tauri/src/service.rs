@@ -263,9 +263,10 @@ pub async fn get_messages(app: &AppHandle) {
             continue;
         }
         let date = datefmt::format_unix(m.time, &fmt);
+        let (summary, text) = m.toast_text(&date);
         send_notification(
-            format!("{} - {}", m.topic, date),
-            m.message.clone(),
+            summary,
+            text,
             persistent,
             state.store.get_str("instanceURL").unwrap_or_default(),
         );
