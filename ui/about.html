@@ -24,7 +24,7 @@
 const { invoke } = window.__TAURI__.core;
 invoke('get_app_info').then((i) => {
   document.getElementById('name').textContent = i.title;
-  document.getElementById('version').textContent = 'v' + i.version;
+  document.getElementById('version').textContent = 'v' + i.version + ' (' + i.build + ')';
   document.getElementById('author').textContent = i.author;
   document.getElementById('runtime').textContent = 'Tauri v' + i.tauri;
   const urls = { repo: i.repo, docs: i.repo + '/blob/main/README.md', sponsor: i.sponsor };

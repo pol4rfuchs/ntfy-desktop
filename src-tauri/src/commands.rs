@@ -122,6 +122,7 @@ pub fn get_app_info() -> Value {
         "name": "ntfy-desktop",
         "title": "Ntfy Desktop",
         "version": env!("CARGO_PKG_VERSION"),
+        "build": env!("NTFY_BUILD"),
         "author": "pol4rfuchs",
         "repo": menu::HOMEPAGE,
         "sponsor": menu::SPONSOR,

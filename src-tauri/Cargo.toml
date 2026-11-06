@@ -1,6 +1,6 @@
 [package]
 name = "ntfy-desktop"
-version = "2.2.0"
+version = "2.2.1"
 description = "Ntfy.sh desktop client for Windows, Linux, and MacOS with push notifications. Supports official ntfy.sh website and self-hosted instances."
 authors = ["pol4rfuchs"]
 license = "GPL-3.0-or-later"
