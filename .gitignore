@@ -134,6 +134,26 @@
 !/src/pages/**
 
 # #
+#   [WL]: Tauri / Rust
+# #
+
+!/src-tauri
+!/src-tauri/Cargo.toml
+!/src-tauri/Cargo.lock
+!/src-tauri/build.rs
+!/src-tauri/tauri.conf.json
+!/src-tauri/src
+!/src-tauri/src/*.rs
+!/src-tauri/capabilities
+!/src-tauri/capabilities/*.json
+!/src-tauri/icons
+!/src-tauri/icons/*
+/src-tauri/target
+/src-tauri/gen
+!/ui
+!/ui/*
+
+# #
 #   [WL]: Electron
 # #
 

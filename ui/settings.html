@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Settings</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <section id="general" hidden>
+    <h1>General Settings</h1>
+    <p class="desc">Change the overall functionality of the app.</p>
+    <label>Enable Developer Tools<div class="hint">Add developer tools to top menu</div>
+      <select data-key="bDevTools" data-type="flag"><option value="0">Disabled</option><option value="1">Enabled</option></select></label>
+    <label>Enable Hotkeys<div class="hint">Enable the ability to use hotkeys to navigate</div>
+      <select data-key="bHotkeys" data-type="flag"><option value="0">Disabled</option><option value="1">Enabled</option></select></label>
+    <label>Quit on Exit<div class="hint">Quit app instead of send-to-tray for close button</div>
+      <select data-key="bQuitOnClose" data-type="flag"><option value="0">Disabled</option><option value="1">Enabled</option></select></label>
+    <label>Minimize to Tray<div class="hint">Start app minimized in tray</div>
+      <select data-key="bStartHidden" data-type="flag"><option value="0">Disabled</option><option value="1">Enabled</option></select></label>
+  </section>
+
+  <section id="instance" hidden>
+    <h1>Instance Settings</h1>
+    <p class="desc">This can either be the official ntfy.sh server, or your own self-hosted domain / ip.</p>
+    <label>Instance URL<div class="hint">Remove everything to set back to official ntfy.sh server.</div>
+      <input type="url" data-key="instanceURL" data-type="text" placeholder="Enter URL to ntfy server"></label>
+    <label>Skip URL Validation<div class="hint">Skip connection check on startup (use for local/private instances or self-signed certs)</div>
+      <select data-key="bLocalhost" data-type="flag"><option value="0">Disabled</option><option value="1">Enabled</option></select></label>
+  </section>
+
+  <section id="token" hidden>
+    <h1>API Token</h1>
+    <p class="desc">Generate an API token within ntfy.sh or your self-hosted instance and provide it below to receive desktop push notifications.</p>
+    <label>Token<div class="hint" id="tokenHint"></div>
+      <input type="password" id="tokenInput" autocomplete="off" placeholder="Enter API token"></label>
+  </section>
+
+  <section id="topics" hidden>
+    <h1>Subscribed Topics</h1>
+    <p class="desc">Specify a list of topics you would like to receive push notifications for, separated by commas.<br>Ex: announcements,stats</p>
+    <label>Topics<input type="text" data-key="topics" data-type="text" placeholder="announcements,stats"></label>
+  </section>
+
+  <section id="notifications" hidden>
+    <h1>Notification Settings</h1>
+    <p class="desc">Determines how notifications will behave.</p>
+    <label>Sticky Notifications<div class="hint">Stay on screen until dismissed</div>
+      <select data-key="bPersistentNoti" data-type="flag"><option value="0">Disabled</option><option value="1">Enabled</option></select></label>
+    <label>Datetime Format<div class="hint">Format for date and timestamps, e.g. YYYY-MM-DD hh:mm a</div>
+      <input type="text" data-key="datetime" data-type="text" required></label>
+    <label>Polling Rate<div class="hint">Seconds between requests to get new notifications (5 – 3600).</div>
+      <input type="number" data-key="pollrate" data-type="number" min="5" max="3600" step="1" required></label>
+  </section>
+
+  <div class="status" id="status" role="status"></div>
+  <div class="row">
+    <button id="clearToken" hidden>Remove token</button>
+    <button id="cancel">Cancel</button>
+    <button id="save" class="primary">Save</button>
+  </div>
+</main>
+<script src="settings.js"></script>
+</body>
+</html>

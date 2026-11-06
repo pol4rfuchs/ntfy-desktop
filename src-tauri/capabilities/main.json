@@ -1,0 +1,9 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "remote-main",
+  "description": "The ntfy web UI (official or self-hosted) may only reset the unread badge.",
+  "local": false,
+  "windows": ["main"],
+  "remote": { "urls": ["https://*/*", "https://*:*/*", "http://*/*", "http://*:*/*"] },
+  "permissions": ["allow-badge-reset"]
+}

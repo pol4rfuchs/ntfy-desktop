@@ -1,0 +1,16 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "local-windows",
+  "description": "Bundled settings and about pages.",
+  "local": true,
+  "windows": ["settings", "about"],
+  "permissions": [
+    "core:default",
+    "allow-get-settings",
+    "allow-save-settings",
+    "allow-set-api-token",
+    "allow-get-app-info",
+    "allow-open-external",
+    "allow-close-window"
+  ]
+}

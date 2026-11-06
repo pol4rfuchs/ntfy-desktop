@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>About</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="banner"><div class="t" id="name">Ntfy Desktop</div><div class="v" id="version"></div></div>
+<div class="center">
+  <img src="cover.png" alt="icon">
+  <div id="author"></div>
+  <div class="hint" id="runtime"></div>
+  <p>ntfy-desktop is licensed under GPLv3 or later.</p>
+  <div class="links">
+    <a data-link="repo">View Repo</a>
+    <a data-link="docs">View Docs</a>
+    <a data-link="sponsor">Sponsor</a>
+  </div>
+</div>
+<script>
+const { invoke } = window.__TAURI__.core;
+invoke('get_app_info').then((i) => {
+  document.getElementById('name').textContent = i.title;
+  document.getElementById('version').textContent = 'v' + i.version;
+  document.getElementById('author').textContent = i.author;
+  document.getElementById('runtime').textContent = 'Tauri v' + i.tauri;
+  const urls = { repo: i.repo, docs: i.repo + '/blob/main/README.md', sponsor: i.sponsor };
+  document.querySelectorAll('[data-link]').forEach((a) =>
+    a.addEventListener('click', () => invoke('open_external', { url: urls[a.dataset.link] })));
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') invoke('close_window', { label: 'about' }); });
+</script>
+</body>
+</html>
