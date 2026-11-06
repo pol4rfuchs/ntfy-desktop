@@ -54,21 +54,11 @@
   - [Key Binds](#key-binds)
   - [CLI Arguments](#cli-arguments)
 - [Build](#build)
-  - [Method: Build Script](#method-build-script)
-    - [Windows](#windows)
-    - [Linux](#linux)
-    - [MacOSX](#macosx)
-  - [Method: Package.json Command](#method-packagejson-command)
-    - [Summary](#summary)
-    - [Windows](#windows-1)
-    - [Linux](#linux-1)
-    - [MacOSX](#macosx-1)
+  - [Requirements](#requirements)
+  - [Build Script](#build-script)
+  - [Run From Source](#run-from-source)
+  - [GitHub Workflows](#github-workflows)
 - [Tests](#tests)
-  - [Github Workflow](#github-workflow)
-  - [Manual Test](#manual-test)
-    - [Playwright Tests](#playwright-tests)
-    - [Vitest Tests](#vitest-tests)
-- [Linting](#linting)
 - [Signed Releases](#signed-releases)
   - [Validate .Sig](#validate-sig)
   - [Validate SHA256SUM](#validate-sha256sum)
@@ -85,7 +75,7 @@
 
 # About
 
-This project allows you to access the official free / paid notification service [ntfy.sh](https://ntfy.sh/), or your own self-hosted version of ntfy from within a desktop application which uses the system webview (Tauri / Rust) as the wrapper. The previous Electron version is still available in the `src` folder as a legacy build.
+This project allows you to access the official free / paid notification service [ntfy.sh](https://ntfy.sh/), or your own self-hosted version of ntfy from within a desktop application which uses the system webview (Tauri / Rust) as the wrapper.
 
 <br />
 
@@ -310,7 +300,6 @@ cargo run
 | --- | --- | --- |
 | `Build Tauri (Rust)` | manual, or a pull request touching `src-tauri/` or `ui/` | runs Rust tests and Clippy, builds installers for Windows, Linux and macOS and attaches them to the run as artifacts |
 | `Build & Release` | manual | same builds, then publishes a GitHub release with checksums. The version is read from `src-tauri/tauri.conf.json` and must match `src-tauri/Cargo.toml` |
-| `Build & Release (Electron, legacy)` | manual | the old Electron release process |
 
 <br />
 
@@ -322,281 +311,9 @@ More details are in [`src-tauri/README.md`](src-tauri/README.md).
 
 <br />
 
-# Build (Legacy Electron)
-
-The Electron version in the `src` folder is still available. It uses the scripts `build-electron.bat` and `build-electron.sh` (formerly `build.bat` / `build.sh`).
-
-<br />
-
-## Method: Build Script
-
-This method makes use of the `build-electron.bat` and `build-electron.sh` scripts provided in this repository. Find your operating system below and follow the instructions:
-
-- [Windows](#windows)
-- [Linux](#linux)
-- [MacOSX](#macosx)
-
-<br />
-
-### Windows
-
-Install NodeJS with NPM by going to the following URL. Make sure to select your current operating system at the top:
-
-- https://nodejs.org/en/download
-
-<br />
-
-Next, run the following commands in Powershell or Windows Command Prompt:
-
-```shell
-# Clone ntfy-desktop repo, make sure you are in an EMPTY folder:
-mkdir ntfy-desktop && cd ntfy-desktop/
-git clone https://github.com/aetherinox/ntfy-desktop.git .
-
-# install npm packages
-npm install
-npm install -g electron
-
-# build ntfy
-./build-electron.bat
-```
-
-<br />
-<br />
-
-### Linux
-
-Run the following commands to install NodeJS + NPM, and then Ntfy Desktop:
-
-```shell
-# Install packages
-sudo apt update
-sudo apt install git nodejs npm wine64
-
-# create the needed folders
-mkdir ntfy-desktop && cd ntfy-desktop/
-
-# clone repo
-git clone https://github.com/aetherinox/ntfy-desktop.git .
-
-# install npm packages
-npm install
-npm install -g electron-packager
-
-# set wine symlink
-sudo ln -s /usr/bin/wine /usr/bin/wine64
-
-# change permissions
-sudo chmod +x build-electron.sh
-
-# build ntfy
-./build-electron.sh
-```
-
-<br />
-<br />
-
-### MacOSX
-
-Install NodeJS with NPM by going to the following URL. Make sure to select your current operating system at the top.
-
-<br />
-
-To install **node / npm**, download from:
-- https://nodejs.org/en/download
-
-<br />
-
-To install **Git** on your system:
-
-- https://git-scm.com/downloads/mac
-
-<br />
-
-Open your Terminal app and run the following commands:
-
-<br />
-
-```shell
-# install git
-brew install git
-
-# install wine
-brew install --cask wine-stable
-
-# create the needed folders
-mkdir ntfy-desktop && cd ntfy-desktop/
-
-# clone repo
-git clone https://github.com/aetherinox/ntfy-desktop.git .
-
-# install npm packages
-npm install
-npm install -g electron-packager
-
-# set wine symlink
-sudo ln -s /usr/bin/wine /usr/bin/wine64
-
-# change permissions
-sudo chmod +x build-electron.sh
-
-# build ntfy
-./build-electron.sh
-```
-
-<br />
-<br />
-
-## Method: Package.json Command
-
-You can also build your own copy of ntfy-desktop by executing the included `package.json` run commands.
-
-- [Windows](#windows-1)
-- [Linux](#linux-1)
-- [MacOSX](#macosx-1)
-
-<br />
-
-### Summary
-
-To run the `npm` commands, you must install NodeJS and NPM on your system. To install them, visit: 
-
-- https://nodejs.org/en/download
-
-<br />
-
-The `package.json` includes the commands listed below. Because the build commands have dynamic variables; you must run the command based on what operating system you are building from.
-
-If you are building ntfy-desktop from a **Windows** machine:
-
-- `npm run build:win:windows`
-- `npm run build:win:linux`
-- `npm run build:win:mac`
-
-<br />
-
-If you are building ntfy-desktop from a **Linux** or **MacOS** machine:
-
-- `npm run build:lin:windows`
-- `npm run build:lin:linux`
-- `npm run build:lin:mac`
-
-<br />
-<br />
-
-### Windows
-
-Install NodeJS with NPM by going to the following URL. Make sure to select your current operating system at the top:
-
-- https://nodejs.org/en/download
-
-<br />
-
-Next, run the following commands in Powershell or Windows Command Prompt:
-
-```shell
-# create the needed folders
-mkdir ntfy-desktop && cd ntfy-desktop/
-
-# clone repo
-git clone https://github.com/aetherinox/ntfy-desktop.git .
-
-# install npm packages
-npm install
-npm install -g electron-packager
-
-# build ntfy-desktop from Windows to Windows machine
-npm run build:win:windows
-
-# build ntfy-desktop from Windows to Linux machine
-npm run build:lin:windows
-```
-
-<br >
-<br >
-
-### Linux
-
-Run the following commands to install NodeJS + NPM, and then Ntfy Desktop:
-
-```shell
-# Install NodeJS and NPM
-sudo apt update
-sudo apt install git nodejs npm wine64
-
-# create the needed folders
-mkdir ntfy-desktop && cd ntfy-desktop/
-
-# clone repo
-git clone https://github.com/aetherinox/ntfy-desktop.git .
-
-# install npm packages
-npm install
-npm install -g electron-packager
-
-# set wine symlink
-sudo ln -s /usr/bin/wine /usr/bin/wine64
-
-# build ntfy-desktop from Linux to Windows machine
-npm run build:lin:linux
-
-# build ntfy-desktop from Linux to Linux machine
-npm run build:lin:windows
-```
-
-<br />
-<br />
-
-### MacOSX
-
-Install NodeJS with NPM by going to the following URL. Make sure to select your current operating system at the top:
-
-- https://nodejs.org/en/download
-
-<br />
-
-Install **Git** on your system next:
-
-- https://git-scm.com/downloads/mac
-
-<br />
-
-Open your Terminal app and run the following commands:
-
-```shell
-# Install NodeJS and NPM
-sudo apt update
-sudo apt install git nodejs npm wine64
-
-# create the needed folders
-mkdir ntfy-desktop && cd ntfy-desktop/
-
-# clone repo
-git clone https://github.com/aetherinox/ntfy-desktop.git .
-
-# install npm packages
-npm install
-npm install -g electron-packager
-
-# set wine symlink
-sudo ln -s /usr/bin/wine /usr/bin/wine64
-
-# build ntfy-desktop from Windows to MacOS machine
-npm run build:win:mac
-
-# build ntfy-desktop from Linux toL MacOS machine
-npm run build:lin:mac
-```
-
-<br />
-
----
-
-<br />
-
 # Tests
 
-## Rust Tests (Tauri version)
+## Rust Tests
 
 ```shell
 cd src-tauri
@@ -605,193 +322,6 @@ cargo clippy -- -D warnings
 ```
 
 They run automatically in the `Build Tauri (Rust)` workflow.
-
-<br />
-
-## Electron Tests (legacy)
-
-This repository contains tests in order to test the functionality of the legacy Electron version. We utilize a Github workflow to handle the automation, however, you can run the tests locally.
-
-<br />
-
-In order to run these tests, you must have some dependencies installed on your system or runner:
-
-```shell
-sudo apt install xvfb -y
-npm install
-npx playwright install-deps
-```
-
-<br />
-
-If you do not run the command `playwright install-deps`; then you will need to install all of the dependencies manually with the command:
-
-```shell
-sudo apt install xvfb -y
-sudo apt-get install libasound2 libxslt-dev woff2 libevent-dev libopus0 \
-  libopus-dev libwebpdemux2 libharfbuzz-dev libharfbuzz0b libwebp-dev \
-  libenchant-2-dev libsecret-1-0 libsecret-1-dev libglib2.0-dev libhyphen0 \
-  libglfw3-dev libgles2-mesa-dev libudev1 libevdev2 libgles2-mesa yasm \
-  libudev1 libudev-dev libgudev-1.0-0 libx264-dev libgconf-2-4 libatk1.0-0 \
-  libatk-bridge2.0-0 libgdk-pixbuf2.0-0 libgtk-3-0 libgbm-dev libnss3-dev \
-  libxss-dev -y
-npx playwright install
-```
-
-<br />
-
-## Github Workflow
-
-You can fork this repository and run the included Github workflows
-- https://github.com/Aetherinox/ntfy-desktop/blob/f794bb835cb68a2b6da74d9161e7432c673179ea/.github/workflows/npm-tests.yml
-
-<br />
-
-In order for the workflow to work, your Github or self-hosted runner must have numerous dependencies installed. Ensure you do not remove the `npm install` and `apt install` commands from the workflow; otherwise the tests will fail.
-
-<br />
-
-## Manual Test
-
-You can also run the included tests manually without a Github workflow with the instructions below.
-
-<br />
-
-### Playwright Tests
-
-These tests specifically check the Electron app itself. They will attempt to open ntfy-desktop and make sure the application is in working order. These tests do NOT test the back-end code of the app. 
-
-```shell
-cd ./src
-npm run test
-```
-
-<br />
-
-You should see numerous windows open and multiple copies of Ntfy Desktop start up. This is normal, and is the test checking out the functionality of the application.
-
-<br />
-
-If you want to run the tests from a CI without having a GUI available to see the tests; you can run the command:
-
-```shell
-xvfb-run --auto-servernum \
-  --server-args="-screen 0 1280x960x24" npx playwright test \
-  --trace on
-```
-
-<br />
-
-If you want to run the tests, while having Electron running in debug / verbose mode; run the command:
-
-```shell
-DISPLAY=:0 DEBUG=pw:browser xvfb-run \
-  --auto-servernum \
-  --server-args="-screen 0 1280x960x24" npx playwright test \
-  --trace on
-```
-
-<br />
-
-The tests should show something similar to the following:
-
-```console
-[chromium] › tests/main.spec.js:65:1 › ✅ ensure interface can fully load
-✅ Open New Window: About
-[webkit] › tests/main.spec.js:65:1 › ✅ ensure interface can fully load
-✅ Open New Window: About
-[chromium] › tests/main.spec.js:65:1 › ✅ ensure interface can fully load
-✅ Saved screenshot: test-results/fullload_1749458422355.png
-[webkit] › tests/main.spec.js:65:1 › ✅ ensure interface can fully load
-[SubscriptionManager] No browser subscription currently exists, so web push was never enabled or the notification permission was removed. Skipping.
-✅ Saved screenshot: test-results/fullload_1749458422373.png
-[firefox] › tests/main.spec.js:143:1 › ✅ fail to sign into invalid account
-ntfy
-[chromium] › tests/main.spec.js:143:1 › ✅ fail to sign into invalid account
-ntfy
-[webkit] › tests/main.spec.js:143:1 › ✅ fail to sign into invalid account
-ntfy
-  9 passed (15.3s)
-
-To open last HTML report run:
-
-  npx playwright show-report
-```
-
-<br />
-<br />
-
-### Vitest Tests
-
-These tests check the back-end functionality of the app, including a lot of the functions that the source code comes with.
-
-```shell
-cd ./src
-npm run test:unit:run
-```
-
-<br />
-
-The results for the tests will be printed in your terminal / command prompt.
-
-```shell
- RUN  v3.2.4 ntfy-desktop/src
-
- ✓ tests/storage.test.js (23 tests) 17ms
- ✓ tests/utils.test.js (26 tests) 31ms
- ✓ tests/logging.test.js (8 tests) 28ms
-
- Test Files  3 passed (3)
-      Tests  57 passed (57)
-   Start at  10:19:17
-   Duration  577ms (transform 158ms, setup 0ms, collect 427ms, tests 76ms, environment 1ms, prepare 377ms)
-```
-
-<br />
-
----
-
-<br />
-
-# Linting
-
-This node package comes with ESlint, and a set of rules which should be followed. If you have intentions of creating new features and contributing to this repository; you must follow these linter rules. You can check the current status of your code by running:
-
-```shell
-cd ./src
-npm run lint
-```
-
-<br />
-
-Any failures will be reported in console:
-
-```shell
-ntfy-desktop\src\tests\storage.test.js
-    1:74   error  Expected linebreaks to be 'LF' but found 'CRLF'  @stylistic/linebreak-style
-    2:21   error  Expected linebreaks to be 'LF' but found 'CRLF'  @stylistic/linebreak-style
-    3:25   error  Expected linebreaks to be 'LF' but found 'CRLF'  @stylistic/linebreak-style
-    4:21   error  Expected linebreaks to be 'LF' but found 'CRLF'  @stylistic/linebreak-style
-    5:32   error  Expected linebreaks to be 'LF' but found 'CRLF'  @stylistic/linebreak-style
-    6:1    error  Expected linebreaks to be 'LF' but found 'CRLF'  @stylistic/linebreak-style
-    7:3    error  Expected linebreaks to be 'LF' but found 'CRLF'  @stylistic/linebreak-style
-    8:29   error  Expected linebreaks to be 'LF' but found 'CRLF'  @stylistic/linebreak-style
-    6:14   error  A space is required after '['                    @stylistic/array-bracket-spacing
-    6:29   error  A space is required before ']'                   @stylistic/array-bracket-spacing
-```
-
-<br />
-
-You must fix these before submitting a contribution. You can opt to automatically fix errors by running the command:
-
-```shell
-npm run lint:fix
-```
-
-<br />
-
-> [!WARNING]
-> Opting to automatically fix linting errors may result in mis-aligned brackets. Make sure these are fixed before submitting any pull requests.
 
 <br />
 
@@ -1250,16 +780,21 @@ If you see `OK`; this means the files are valid.
 
 # Dependencies
 
-Ntfy Desktop relies on the following packages, some of these are also made by us:
+Ntfy Desktop is written in Rust and relies on these main crates (see [`src-tauri/Cargo.toml`](src-tauri/Cargo.toml) for the full list):
 
 <br />
 
-| Package | Language | Version | Description
-| --- | --- | --- | --- |
-| [ntfy-toast](https://github.com/Aetherinox/ntfy-toast) | C++ | [![Version][ntfy-toast-github-version-img]][ntfy-toast-github-version-uri] | Command-line application which handles toast notifications on Windows 8 and newer |
-| [toasted-notifier](https://github.com/Aetherinox/node-toasted-notifier) | Javascript | [![Version][toasted-notifier-npm-version-img]][toasted-notifier-npm-version-uri] | Node package which acts as a wrapper to send notification data between [Ntfy Desktop](https://github.com/Aetherinox/ntfy-desktop) and [ntfy-toast](https://github.com/Aetherinox/ntfy-toast) |
-| [electron-plugin-prompts](https://github.com/Aetherinox/node-electron-plugin-prompts) | Javascript | [![Version][plugin-prompts-npm-version-img]][plugin-prompts-npm-version-uri] | Node package which allows for more detailed and customizable interface forms |
-
+| Crate | Purpose |
+| --- | --- |
+| [tauri](https://crates.io/crates/tauri) | App framework: windows, system webview, tray, menus |
+| [tauri-plugin-single-instance](https://crates.io/crates/tauri-plugin-single-instance) | Only one running instance |
+| [tauri-plugin-opener](https://crates.io/crates/tauri-plugin-opener) | Opens links in the default browser |
+| [tauri-plugin-dialog](https://crates.io/crates/tauri-plugin-dialog) | Native message dialogs |
+| [reqwest](https://crates.io/crates/reqwest) | HTTP requests to the ntfy server |
+| [tokio](https://crates.io/crates/tokio) | Async runtime for the polling loop |
+| [notify-rust](https://crates.io/crates/notify-rust) | Native desktop notifications |
+| [keyring](https://crates.io/crates/keyring) | API token storage in the system keychain |
+| [chrono](https://crates.io/crates/chrono) | Date and time formatting |
 
 <br />
 
@@ -1318,17 +853,8 @@ The following people have helped get this project going:
 <!-- prettier-ignore-start -->
 <!-- markdownlint-disable -->
 
-<!-- (electron-plugin-prompts > BADGE > VERSION > NPMJS -->
-  [plugin-prompts-npm-version-img]: https://img.shields.io/npm/v/electron-plugin-prompts?logo=npm&label=Version&color=ba5225
-  [plugin-prompts-npm-version-uri]: https://npmjs.com/package/electron-plugin-prompts
 
-<!-- (toasted-notifier > BADGE > VERSION > NPMJS -->
-  [toasted-notifier-npm-version-img]: https://img.shields.io/npm/v/toasted-notifier?logo=npm&label=Version&color=ba5225
-  [toasted-notifier-npm-version-uri]: https://npmjs.com/package/toasted-notifier
 
-<!-- ntfy-toastBADGE > VERSION > GITHUB -->
-  [ntfy-toast-github-version-img]: https://img.shields.io/github/v/tag/aetherinox/ntfy-toast?logo=GitHub&label=Version&color=ba5225
-  [ntfy-toast-github-version-uri]: https://github.com/aetherinox/ntfy-toast/releases
 
 
 

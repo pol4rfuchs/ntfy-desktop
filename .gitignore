@@ -61,29 +61,10 @@
 !/notifiers
 
 # #
-#   [WL]: Linting
+#   [WL]: Editor Config
 # #
 
 !.editorconfig
-!eslint.config.mjs
-!eslintrc
-!prettierignore
-!prettierrc
-
-# #
-#   [WL]: Dependency Configs
-# #
-
-!rollup.config.js
-!rollup.config.mjs
-!tsconfig.json
-
-# #
-#   [WL]: NPM
-# #
-
-!npmignore
-!.npmrc
 
 # #
 #   [WL]: Signing / Digests
@@ -100,38 +81,7 @@
 !*.bat
 !*.css
 !*.sh
-!*index.js
-!*manifest.json
-!*ntfy.js
-!*preload.js
-!*preloader.js
-!*renderer.js
-!*storage.js
 !package.json
-!root.cjs
-!root.mjs
-!versions.json
-
-!/src
-!/src/*.ts
-!/src/vitest.config.js
-!/src/package-lock.json
-/src/node_modules
-/src/playwright
-/src/playwright-report
-/src/test-results
-
-!src/Classes/
-!src/Classes/*.js
-
-!/src/assets
-!/src/assets/**
-
-!/src/tests
-!/src/tests/**
-
-!/src/pages
-!/src/pages/**
 
 # #
 #   [WL]: Tauri / Rust
@@ -152,18 +102,3 @@
 /src-tauri/gen
 !/ui
 !/ui/*
-
-# #
-#   [WL]: Electron
-# #
-
-!/electron
-
-# #
-#   [WL]: Tests
-# #
-
-!*playwright.config.js
-!/example
-!/tests
-!/Tests

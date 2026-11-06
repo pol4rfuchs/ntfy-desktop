@@ -33,9 +33,7 @@
   "packageRules": [
     {
       "matchManagers": [
-        "nodenv",
-        "npm",
-        "nvm"
+        "cargo"
       ],
       "addLabels": [
         "Type › Dependency"
@@ -44,9 +42,7 @@
     },
     {
       "matchManagers": [
-        "nodenv",
-        "npm",
-        "nvm"
+        "cargo"
       ],
       "matchUpdateTypes": [
         "minor",

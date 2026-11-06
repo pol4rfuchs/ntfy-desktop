@@ -1,6 +1,6 @@
 # Ntfy Desktop — Tauri / Rust version
 
-Rust port of the Electron client in `../src`, built on [Tauri 2](https://tauri.app).
+Rust port of the earlier Electron client (the Electron sources were removed from the repository; see the git history), built on [Tauri 2](https://tauri.app).
 Same features: tray icon, menu, polling of ntfy topics, native notifications, unread
 badge, single instance, the CLI switches (`--hidden --devtools --terminate --hotkeys --env`).
 
@@ -39,7 +39,7 @@ cargo tauri build              # installers in target/release/bundle
 | `ui/` | bundled settings + about pages (plain HTML/JS, no build step) |
 | `capabilities/` | the remote ntfy page may only call `badge_reset`; local pages get the rest |
 
-## Known differences to the Electron version
+## Known differences to the former Electron version
 
 * Notifications show the ntfy message title when the message has one (`<title>`, then message, topic and date).
 * Clicking a notification opens the instance only on Linux; Windows/macOS toasts via `notify-rust` have no click callback.

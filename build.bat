@@ -12,8 +12,6 @@ TITLE ntfy-desktop Build Script (Tauri)
 ::
 ::  usage:  build.bat               run tests, then build installers
 ::          build.bat --debug       extra arguments are passed to `cargo tauri build`
-::
-::  the previous Electron build lives in build-electron.bat
 :: #
 
 CD /d "%~dp0src-tauri"

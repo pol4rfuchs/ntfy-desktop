@@ -13,8 +13,6 @@
 #
 #   usage:  ./build.sh              run tests, then build installers
 #           ./build.sh --debug      extra arguments are passed to `cargo tauri build`
-#
-#   the previous Electron build lives in build-electron.sh
 # #
 
 set -euo pipefail
