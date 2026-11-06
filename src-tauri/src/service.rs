@@ -30,12 +30,21 @@ pub fn get_api_token(state: &AppState) -> String {
 fn read_api_token(state: &AppState) -> String {
     if let Ok(entry) = keyring::Entry::new(KEYRING_SERVICE, KEYRING_USER) {
         match entry.get_password() {
-            Ok(t) if !t.is_empty() => return t,
+            Ok(t) if !t.is_empty() => {
+                tracing::info!("[token] loaded from keychain ({} chars)", t.chars().count());
+                return t;
+            }
             Ok(_) | Err(keyring::Error::NoEntry) => {}
-            Err(e) => tracing::warn!("keychain read failed, using settings file: {e}"),
+            Err(e) => tracing::warn!("[token] keychain read failed, using settings file: {e}"),
         }
     }
-    state.store.get_str("apiToken").unwrap_or_default()
+    let t = state.store.get_str("apiToken").unwrap_or_default();
+    if t.is_empty() {
+        tracing::info!("[token] no api token set");
+    } else {
+        tracing::info!("[token] loaded from settings file ({} chars)", t.chars().count());
+    }
+    t
 }
 
 pub fn set_api_token(state: &AppState, token: &str) {
@@ -50,7 +59,10 @@ pub fn set_api_token(state: &AppState, token: &str) {
         return;
     }
     match entry.and_then(|e| e.set_password(token)) {
-        Ok(()) => state.store.set("apiToken", Value::String(String::new())),
+        Ok(()) => {
+            tracing::info!("[token] saved to keychain ({} chars)", token.chars().count());
+            state.store.set("apiToken", Value::String(String::new()));
+        }
         Err(e) => {
             tracing::warn!("keychain unavailable ({e}); storing api token in the settings file");
             state.store.set("apiToken", Value::String(token.to_string()));
@@ -118,6 +130,7 @@ pub fn send_notification(title: String, body: String, persistent: bool, open_url
         }
         match n.show() {
             Ok(_handle) => {
+                tracing::info!("[notify] notification shown: {title}");
                 #[cfg(all(unix, not(target_os = "macos")))]
                 _handle.wait_for_action(|action| {
                     if action == "default" && poll::is_allowed_external(&open_url) {
@@ -220,19 +233,24 @@ pub async fn get_messages(app: &AppHandle) {
     *state.last_poll_start.lock().unwrap() = Some(now_ms);
 
     let parsed = poll::parse_body(&body);
+    let token_note = if token.is_empty() {
+        "no API token is set".to_string()
+    } else {
+        format!("an API token ({} chars) was sent", token.chars().count())
+    };
     for w in &parsed.warnings {
         match w {
             Warning::InvalidJson => tracing::error!(
                 "[messages] polling returned invalid json; skipping entry. Change your instance URL to a valid ntfy instance."
             ),
             Warning::Unauthorized { link } => tracing::warn!(
-                "[auth] unauthorized: ensure the instance URL and your API token are correct ({link})"
+                "[auth] unauthorized ({token_note}): ensure the instance URL and your API token are correct ({link})"
             ),
             Warning::RateLimited { link } => tracing::warn!(
                 "[auth] poll limit reached: too many auth failures; increase your limits with a paid plan ({link})"
             ),
             Warning::ServerError { error, code, link } => {
-                tracing::warn!("[auth] skipped pending messages: {error} (code {code}) {link}")
+                tracing::warn!("[auth] skipped pending messages: {error} (code {code}; {token_note}) {link}")
             }
         }
     }
