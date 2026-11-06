@@ -15,6 +15,23 @@ pub struct Message {
     pub time: i64,
     pub topic: String,
     pub message: String,
+    /// Optional ntfy message title.
+    pub title: Option<String>,
+}
+
+impl Message {
+    /// Toast (summary, body). Messages with a title show it as the heading and
+    /// keep topic and date underneath; without a title the heading is
+    /// `<topic> - <date>` like the Electron version.
+    pub fn toast_text(&self, date: &str) -> (String, String) {
+        match self.title.as_deref().map(str::trim).filter(|t| !t.is_empty()) {
+            Some(title) => (
+                title.to_string(),
+                format!("{}\n{} · {}", self.message, self.topic, date),
+            ),
+            None => (format!("{} - {}", self.topic, date), self.message.clone()),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -114,6 +131,7 @@ pub fn parse_body(body: &str) -> Parsed {
             time: v.get("time").and_then(Value::as_i64).unwrap_or(0),
             topic: s("topic"),
             message: s("message"),
+            title: v.get("title").and_then(Value::as_str).map(str::to_string),
         });
     }
     out
@@ -252,9 +270,25 @@ mod tests {
         let p = parse_body(body);
         assert_eq!(
             p.messages,
-            vec![Message { id: "2".into(), time: 101, topic: "t".into(), message: "hello".into() }]
+            vec![Message { id: "2".into(), time: 101, topic: "t".into(), message: "hello".into(), title: None }]
         );
         assert!(p.warnings.is_empty());
+    }
+
+    #[test]
+    fn toast_uses_title_when_present() {
+        let body = r#"{"id":"1","time":1,"event":"message","topic":"ha-info","message":"PC aus","title":"Gaming PC · Offline"}"#;
+        let m = &parse_body(body).messages[0];
+        assert_eq!(m.title.as_deref(), Some("Gaming PC · Offline"));
+        let (summary, text) = m.toast_text("2026-11-06 11:02 pm");
+        assert_eq!(summary, "Gaming PC · Offline");
+        assert_eq!(text, "PC aus\nha-info · 2026-11-06 11:02 pm");
+    }
+
+    #[test]
+    fn toast_without_title_keeps_old_format() {
+        let m = Message { id: "1".into(), time: 1, topic: "t".into(), message: "hi".into(), title: Some("  ".into()) };
+        assert_eq!(m.toast_text("D"), ("t - D".to_string(), "hi".to_string()));
     }
 
     #[test]

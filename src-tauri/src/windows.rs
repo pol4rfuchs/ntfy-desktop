@@ -60,7 +60,7 @@ pub fn create_main(app: &AppHandle) -> tauri::Result<()> {
     let load_handle = app.clone();
 
     let mut builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::External(start))
-        .title(format!("Ntfy Desktop : v{}", env!("CARGO_PKG_VERSION")))
+        .title(format!("Ntfy Desktop : v{} ({})", env!("CARGO_PKG_VERSION"), env!("NTFY_BUILD")))
         .inner_size(1280.0, 720.0)
         .visible(!state.start_hidden())
         .background_color(tauri::utils::config::Color(33, 33, 33, 255))

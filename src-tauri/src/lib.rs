@@ -34,7 +34,7 @@ pub fn run() {
         return;
     }
     init_logging(&cli);
-    tracing::info!("[initiate] starting ntfy-desktop {} env={}", env!("CARGO_PKG_VERSION"), cli.env);
+    tracing::info!("[initiate] starting ntfy-desktop {} (build {}) env={}", env!("CARGO_PKG_VERSION"), env!("NTFY_BUILD"), cli.env);
 
     let store = store::Store::open(store::user_data_dir().join("prefs.json"));
     let app_state = AppState::new(cli, store);
