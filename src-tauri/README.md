@@ -46,3 +46,11 @@ cargo tauri build              # installers in target/release/bundle
 * `allowRunningInsecureContent` has no equivalent: an HTTPS page talking to a plain-HTTP endpoint may be blocked by the system webview.
 * The five settings prompts are one local settings window opened at the matching section.
 * The badge uses the platform badge API where it exists, plus the tray tooltip (`Ntfy Desktop (3 new)`).
+
+## Releasing
+
+Releases are made by the `Build & Release` GitHub workflow, which also raises the version
+(`src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, `src-tauri/Cargo.lock`) with
+`.github/scripts/bump-version.sh`. See the "Releasing" section of the main README.
+To change the version by hand run `.github/scripts/bump-version.sh patch|minor|major` from the
+repository root; it prints the new version.

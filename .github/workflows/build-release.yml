@@ -4,6 +4,17 @@ run-name: '📦 Build & Release'
 on:
     workflow_dispatch:
         inputs:
+            BUMP:
+                description: '🔢 Version: auto = next patch version, unless the current one is not released yet'
+                required: true
+                default: auto
+                type: choice
+                options:
+                    - auto
+                    - patch
+                    - minor
+                    - major
+                    - none
             RC_RELEASE:
                 description: '🧪 Pre-release (Release Candidate)'
                 required: true
@@ -15,35 +26,86 @@ on:
                 type: string
                 default: '1'
 
+# two release runs at the same time would both change the version
+concurrency:
+    group: release
+    cancel-in-progress: false
+
 env:
     PROJECT_NAME: ntfy-desktop
+    BUMP:         ${{ github.event.inputs.BUMP || 'auto' }}
     RC_RELEASE:   ${{ github.event.inputs.RC_RELEASE || false }}
     RC_VERSION:   ${{ github.event.inputs.RC_VERSION || '1' }}
 
 jobs:
 
     # ─────────────────────────────────────────────────────────────
-    #   Version from src-tauri/tauri.conf.json (must match Cargo.toml)
+    #   Version: raise it (see BUMP) and commit it to main; every
+    #   later job builds exactly that commit.
+    #
+    #   Re-run only the FAILED jobs after an error. "Re-run all jobs"
+    #   starts this job again and stops because the release exists.
     # ─────────────────────────────────────────────────────────────
 
     init:
-        name: '🔎 Read version'
+        name: '🔢 Version'
         runs-on: ubuntu-latest
+        permissions:
+            contents: write
         outputs:
             version: ${{ steps.ver.outputs.version }}
+            tag:     ${{ steps.ver.outputs.tag }}
+            sha:     ${{ steps.ver.outputs.sha }}
         steps:
-            - uses: actions/checkout@v4
-            - name: Read version
-              id: ver
+            - name: Only from main
+              if: github.ref != 'refs/heads/main'
               run: |
-                  VER=$(jq -r '.version' src-tauri/tauri.conf.json)
-                  CARGO_VER=$(grep -m1 '^version' src-tauri/Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
-                  if [ "$VER" != "$CARGO_VER" ]; then
-                      echo "::error::tauri.conf.json ($VER) and Cargo.toml ($CARGO_VER) versions differ"
+                  echo "::error::Start this workflow from the main branch (it commits the new version to main)"
+                  exit 1
+
+            - uses: actions/checkout@v4
+
+            - name: Work out the version and commit the bump
+              id: ver
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  set -euo pipefail
+                  CURRENT=$(bash .github/scripts/bump-version.sh none)
+
+                  MODE="$BUMP"
+                  if [ "$MODE" = "auto" ]; then
+                      if gh release view "v${CURRENT}" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+                          MODE=patch
+                          echo "auto: v${CURRENT} is already released, raising the patch version"
+                      else
+                          MODE=none
+                          echo "auto: v${CURRENT} is not released yet, keeping it"
+                      fi
+                  fi
+
+                  VER=$(bash .github/scripts/bump-version.sh "$MODE")
+                  TAG="v${VER}"
+                  if [ "$RC_RELEASE" = "true" ]; then TAG="${TAG}-rc.${RC_VERSION}"; fi
+
+                  # never touch a release that already exists
+                  if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+                      echo "::error::Release $TAG already exists. Use another BUMP value (or RC number), or delete that release first."
                       exit 1
                   fi
+
+                  if [ "$VER" != "$CURRENT" ]; then
+                      git config user.name  "github-actions[bot]"
+                      git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                      git add src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock README.md
+                      git commit -m "chore(release): bump version to ${VER} [skip ci]"
+                      git push origin HEAD:main
+                  fi
+
                   echo "version=$VER" >> "$GITHUB_OUTPUT"
-                  echo "Version: $VER"
+                  echo "tag=$TAG"     >> "$GITHUB_OUTPUT"
+                  echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+                  echo "Release $TAG from $(git rev-parse --short HEAD)"
 
     # ─────────────────────────────────────────────────────────────
     #   Rust unit tests + clippy
@@ -51,10 +113,13 @@ jobs:
 
     test:
         name: '🧪 Rust tests'
+        needs: [ init ]
         runs-on: ubuntu-22.04
         timeout-minutes: 30
         steps:
             - uses: actions/checkout@v4
+              with:
+                  ref: ${{ needs.init.outputs.sha }}
 
             - name: Install system libraries
               run: |
@@ -94,8 +159,12 @@ jobs:
         timeout-minutes: 45
         env:
             VERSION: ${{ needs.init.outputs.version }}
+            # shown in the window title and the About window
+            NTFY_BUILD_SHA: ${{ needs.init.outputs.sha }}
         steps:
             - uses: actions/checkout@v4
+              with:
+                  ref: ${{ needs.init.outputs.sha }}
 
             - name: Install system libraries (Linux)
               if: matrix.os == 'ubuntu-22.04'
@@ -165,6 +234,8 @@ jobs:
             contents: write
         steps:
             - uses: actions/checkout@v4
+              with:
+                  ref: ${{ needs.init.outputs.sha }}
 
             - name: Download all artifacts
               uses: actions/download-artifact@v4
@@ -187,9 +258,8 @@ jobs:
               id: exists
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  TAG: ${{ needs.init.outputs.tag }}
               run: |
-                  TAG="v${VERSION}"
-                  if [ "$RC_RELEASE" = "true" ]; then TAG="${TAG}-rc.${RC_VERSION}"; fi
                   if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
                       echo "Release $TAG already exists; its release notes are kept as they are"
                       echo "exists=true" >> "$GITHUB_OUTPUT"
@@ -202,8 +272,9 @@ jobs:
               uses: softprops/action-gh-release@v2
               with:
                   token: ${{ secrets.GITHUB_TOKEN }}
-                  name: v${{ env.VERSION }}${{ env.RC_RELEASE == 'true' && format('-rc.{0}', env.RC_VERSION) || '' }}
-                  tag_name: v${{ env.VERSION }}${{ env.RC_RELEASE == 'true' && format('-rc.{0}', env.RC_VERSION) || '' }}
+                  name: ${{ needs.init.outputs.tag }}
+                  tag_name: ${{ needs.init.outputs.tag }}
+                  target_commitish: ${{ needs.init.outputs.sha }}
                   draft: false
                   prerelease: ${{ env.RC_RELEASE == 'true' }}
                   generate_release_notes: ${{ steps.exists.outputs.exists != 'true' }}
