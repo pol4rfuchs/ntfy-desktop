@@ -365,7 +365,7 @@ Put the installer and `SHA256SUMS.txt` in the same folder. Replace the version i
 
 ```powershell
 # print the checksum of the installer
-Get-FileHash .\ntfy-desktop-2.2.2-windows-x64-setup.exe -Algorithm SHA256
+Get-FileHash .\ntfy-desktop-2.2.3-windows-x64-setup.exe -Algorithm SHA256
 
 # show the expected value from the release; both must be identical
 Select-String -Path .\SHA256SUMS.txt -Pattern "windows-x64-setup"
@@ -380,7 +380,7 @@ Select-String -Path .\SHA256SUMS.txt -Pattern "windows-x64-setup"
 sha256sum -c SHA256SUMS.txt --ignore-missing
 ```
 
-Expected output: `ntfy-desktop-2.2.2-linux-amd64.deb: OK`. Any `FAILED` means the file is damaged or changed; download it again.
+Expected output: `ntfy-desktop-2.2.3-linux-amd64.deb: OK`. Any `FAILED` means the file is damaged or changed; download it again.
 
 <br />
 
@@ -388,7 +388,7 @@ Expected output: `ntfy-desktop-2.2.2-linux-amd64.deb: OK`. Any `FAILED` means th
 
 ```shell
 # print the checksum and compare it with the line in SHA256SUMS.txt
-shasum -a 256 ntfy-desktop-2.2.2-macos-universal.dmg
+shasum -a 256 ntfy-desktop-2.2.3-macos-universal.dmg
 grep macos-universal SHA256SUMS.txt
 ```
 
