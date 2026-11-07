@@ -3,6 +3,13 @@ run-name: '🦀 Build Tauri (Rust)'
 
 on:
     workflow_dispatch:
+    # main is checked after every merge that touches the app; this also feeds the build badge in the README
+    push:
+        branches: [ main ]
+        paths:
+            - 'src-tauri/**'
+            - 'ui/**'
+            - '.github/workflows/build-tauri.yml'
     pull_request:
         paths:
             - 'src-tauri/**'
