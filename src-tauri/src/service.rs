@@ -9,6 +9,7 @@ use crate::{
 };
 use serde_json::Value;
 use std::{sync::atomic::Ordering, time::Duration};
+use crate::windows as win;
 use tauri::{AppHandle, Manager};
 
 const KEYRING_SERVICE: &str = "ntfy-desktop";
@@ -102,47 +103,74 @@ pub fn reset_badge(app: &AppHandle) {
 
 // ------------------------------------------------------------ notifications
 
-pub fn send_notification(title: String, body: String, persistent: bool, open_url: String) {
-    // notify-rust can block (D-Bus / COM), keep it off the async runtime.
-    std::thread::spawn(move || {
-        let mut n = notify_rust::Notification::new();
-        n.summary(&title).body(&body).appname("Ntfy Desktop");
-        if persistent {
-            n.timeout(notify_rust::Timeout::Never);
+/// Show a desktop notification. Clicking it brings the app window to the front
+/// (Windows and Linux; macOS notifications have no click callback here).
+pub fn send_notification(app: &AppHandle, title: String, body: String, persistent: bool) {
+    let app = app.clone();
+    // the platform APIs can block (D-Bus / COM), keep them off the async runtime
+    std::thread::spawn(move || notify_platform(app, title, body, persistent));
+}
+
+#[cfg(windows)]
+fn notify_platform(app: AppHandle, title: String, body: String, persistent: bool) {
+    use tauri_winrt_notification::{Scenario, Sound, Toast};
+
+    // Only an installed app has a registered toast id; when started via
+    // `cargo run` use PowerShell's id so toasts show.
+    let app_id = if cfg!(debug_assertions) { Toast::POWERSHELL_APP_ID } else { "com.ntfydesktop.id" };
+    let handle = app.clone();
+    let mut toast = Toast::new(app_id)
+        .title(&title)
+        .text1(&body)
+        .sound(Some(Sound::Default))
+        .on_activated(move |_action| {
+            win::show_main(&handle);
+            Ok(())
+        });
+    if persistent {
+        // stays on screen until dismissed; reminder toasts need at least one button
+        toast = toast.scenario(Scenario::Reminder).add_button("Open", "open");
+    }
+    match toast.show() {
+        Ok(()) => tracing::info!("[notify] notification shown: {title}"),
+        Err(e) => tracing::error!("failed to show notification: {e}"),
+    }
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+fn notify_platform(app: AppHandle, title: String, body: String, persistent: bool) {
+    let mut n = notify_rust::Notification::new();
+    n.summary(&title).body(&body).appname("Ntfy Desktop");
+    if persistent {
+        n.timeout(notify_rust::Timeout::Never);
+    }
+    n.sound_name("message-new-instant");
+    n.action("default", "Open");
+    match n.show() {
+        Ok(handle) => {
+            tracing::info!("[notify] notification shown: {title}");
+            handle.wait_for_action(|action| {
+                if action == "default" {
+                    win::show_main(&app);
+                }
+            });
         }
-        #[cfg(all(unix, not(target_os = "macos")))]
-        {
-            n.sound_name("message-new-instant");
-            n.action("default", "Open");
-        }
-        #[cfg(target_os = "windows")]
-        {
-            // Only an installed app has a registered toast id; when started
-            // via `cargo run` keep notify-rust's default id so toasts show.
-            if !cfg!(debug_assertions) {
-                n.app_id("com.ntfydesktop.id");
-            }
-        }
-        #[cfg(target_os = "macos")]
-        {
-            let _ = notify_rust::set_application("com.ntfydesktop.id");
-            n.sound_name("Pop");
-        }
-        match n.show() {
-            Ok(_handle) => {
-                tracing::info!("[notify] notification shown: {title}");
-                #[cfg(all(unix, not(target_os = "macos")))]
-                _handle.wait_for_action(|action| {
-                    if action == "default" && poll::is_allowed_external(&open_url) {
-                        let _ = tauri_plugin_opener::open_url(&open_url, None::<&str>);
-                    }
-                });
-                #[cfg(not(all(unix, not(target_os = "macos"))))]
-                let _ = &open_url;
-            }
-            Err(e) => tracing::error!("failed to show notification: {e}"),
-        }
-    });
+        Err(e) => tracing::error!("failed to show notification: {e}"),
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn notify_platform(_app: AppHandle, title: String, body: String, persistent: bool) {
+    let _ = notify_rust::set_application("com.ntfydesktop.id");
+    let mut n = notify_rust::Notification::new();
+    n.summary(&title).body(&body).appname("Ntfy Desktop").sound_name("Pop");
+    if persistent {
+        n.timeout(notify_rust::Timeout::Never);
+    }
+    match n.show() {
+        Ok(_) => tracing::info!("[notify] notification shown: {title}"),
+        Err(e) => tracing::error!("failed to show notification: {e}"),
+    }
 }
 
 // ------------------------------------------------------------------ polling
@@ -264,12 +292,7 @@ pub async fn get_messages(app: &AppHandle) {
         }
         let date = datefmt::format_unix(m.time, &fmt);
         let (summary, text) = m.toast_text(&date);
-        send_notification(
-            summary,
-            text,
-            persistent,
-            state.store.get_str("instanceURL").unwrap_or_default(),
-        );
+        send_notification(app, summary, text, persistent);
         update_badge(app, 1);
         tracing::debug!("[messages] sent notification id={} topic={}", m.id, m.topic);
     }

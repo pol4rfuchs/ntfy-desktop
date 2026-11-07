@@ -48,6 +48,11 @@ pub fn run() {
     let app = builder
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        // start at login: always minimised to the tray
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            Some(vec!["--hidden"]),
+        ))
         .manage(app_state)
         .invoke_handler(tauri::generate_handler![
             commands::badge_reset,

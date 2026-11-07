@@ -163,10 +163,10 @@ pub fn on_menu_event(app: &AppHandle, event: MenuEvent) {
         }
         "help:test" => {
             service::send_notification(
+                app,
                 "Ntfy Desktop - Test Notification".into(),
                 "This is a test notification which determines if desktop notifications are working on your system. If you can see this, then everything is good.".into(),
                 true,
-                state.store.get_str("instanceURL").unwrap_or_default(),
             );
             service::update_badge(app, 1);
         }
