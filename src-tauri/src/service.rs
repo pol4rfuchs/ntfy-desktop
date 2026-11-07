@@ -107,33 +107,76 @@ pub fn reset_badge(app: &AppHandle) {
 /// (Windows and Linux; macOS notifications have no click callback here).
 pub fn send_notification(app: &AppHandle, title: String, body: String, persistent: bool) {
     let app = app.clone();
-    // the platform APIs can block (D-Bus / COM), keep them off the async runtime
+    #[cfg(windows)]
+    toast_worker::send(toast_worker::Request { app, title, body, persistent });
+    // the platform APIs can block (D-Bus), keep them off the async runtime
+    #[cfg(not(windows))]
     std::thread::spawn(move || notify_platform(app, title, body, persistent));
 }
 
+/// Windows toasts are all created on ONE thread that lives as long as the app.
+///
+/// A toast reports clicks through an event handler that is called back into
+/// this process. The handler is bound to the thread (COM apartment) that
+/// created the toast, so a short-lived thread per toast would make a click
+/// silently do nothing once that thread is gone.
 #[cfg(windows)]
-fn notify_platform(app: AppHandle, title: String, body: String, persistent: bool) {
+mod toast_worker {
+    use super::win;
+    use std::sync::{mpsc, OnceLock};
+    use tauri::AppHandle;
     use tauri_winrt_notification::{Scenario, Sound, Toast};
 
-    // Only an installed app has a registered toast id; when started via
-    // `cargo run` use PowerShell's id so toasts show.
-    let app_id = if cfg!(debug_assertions) { Toast::POWERSHELL_APP_ID } else { "com.ntfydesktop.id" };
-    let handle = app.clone();
-    let mut toast = Toast::new(app_id)
-        .title(&title)
-        .text1(&body)
-        .sound(Some(Sound::Default))
-        .on_activated(move |_action| {
-            win::show_main(&handle);
-            Ok(())
-        });
-    if persistent {
-        // stays on screen until dismissed; reminder toasts need at least one button
-        toast = toast.scenario(Scenario::Reminder).add_button("Open", "open");
+    pub struct Request {
+        pub app: AppHandle,
+        pub title: String,
+        pub body: String,
+        pub persistent: bool,
     }
-    match toast.show() {
-        Ok(()) => tracing::info!("[notify] notification shown: {title}"),
-        Err(e) => tracing::error!("failed to show notification: {e}"),
+
+    static TX: OnceLock<mpsc::Sender<Request>> = OnceLock::new();
+
+    pub fn send(req: Request) {
+        let tx = TX.get_or_init(|| {
+            let (tx, rx) = mpsc::channel::<Request>();
+            let spawned = std::thread::Builder::new().name("toast".into()).spawn(move || {
+                // never returns while the app runs, which keeps the apartment alive
+                for r in rx {
+                    show(r);
+                }
+            });
+            if let Err(e) = spawned {
+                tracing::error!("[notify] could not start the toast thread: {e}");
+            }
+            tx
+        });
+        if tx.send(req).is_err() {
+            tracing::error!("[notify] toast thread is not running");
+        }
+    }
+
+    fn show(r: Request) {
+        // Only an installed app has a registered toast id; when started via
+        // `cargo run` use PowerShell's id so toasts show.
+        let app_id = if cfg!(debug_assertions) { Toast::POWERSHELL_APP_ID } else { "com.ntfydesktop.id" };
+        let handle = r.app.clone();
+        let mut toast = Toast::new(app_id)
+            .title(&r.title)
+            .text1(&r.body)
+            .sound(Some(Sound::Default))
+            .on_activated(move |action| {
+                tracing::info!("[notify] toast clicked (action: {action:?})");
+                win::show_main(&handle);
+                Ok(())
+            });
+        if r.persistent {
+            // stays on screen until dismissed; reminder toasts need at least one button
+            toast = toast.scenario(Scenario::Reminder).add_button("Open", "open");
+        }
+        match toast.show() {
+            Ok(()) => tracing::info!("[notify] notification shown: {}", r.title),
+            Err(e) => tracing::error!("failed to show notification: {e}"),
+        }
     }
 }
 
