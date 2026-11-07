@@ -8,8 +8,8 @@
 [![Version][github-version-img]][github-version-uri]
 [![Build Status][github-build-img]][github-build-uri]
 [![Downloads][github-downloads-img]][github-downloads-uri]
-[![Size][github-size-img]][github-size-img]
-[![Last Commit][github-commit-img]][github-commit-img]
+[![Size][github-size-img]][github-size-uri]
+[![Last Commit][github-commit-img]][github-commit-uri]
 [![Contributors][contribs-all-img]](#contributors-)
 <!-- prettier-ignore-end -->
 
@@ -42,25 +42,9 @@ Please review everything on this page before you submit your contribution.
       - [Example 1:](#example-1)
       - [Example 2:](#example-2)
   - [Commiting](#commiting)
-  - [Languages](#languages)
-    - [Python](#python)
-      - [Indentation](#indentation)
-      - [Line Length](#line-length)
-      - [Blank Lines](#blank-lines)
-      - [Imports](#imports)
-      - [Commenting](#commenting)
-      - [Casing](#casing)
-    - [NodeJS - ESLint \& Prettier](#nodejs---eslint--prettier)
-      - [Indentation](#indentation-1)
-      - [Style](#style)
-      - [Line Length](#line-length-1)
-      - [Packages](#packages)
-      - [Configs](#configs)
-        - [ESLint \>= v9 Config](#eslint--v9-config)
-        - [ESLint \< v9 Config](#eslint--v9-config-1)
-        - [Prettier](#prettier)
-      - [Commenting](#commenting-1)
-      - [Casing](#casing-1)
+  - [Code Style](#code-style)
+    - [Rust](#rust)
+    - [HTML and JavaScript (`ui/`)](#html-and-javascript-ui)
 
 <br />
 
@@ -73,11 +57,11 @@ Stuff happens, and sometimes as best as we try, there may be issues within this 
 
 <br />
 
-If you have found a bug, have an issue, or maybe even a cool idea; you can let us know by [submitting it](https://github.com/aetherinox/ntfy-desktop/issues). However, before you submit your new issue, bug report, or feature request; head over to the [Issues Section](https://github.com/aetherinox/ntfy-desktop/issues) and ensure nobody else has already submitted it.
+If you have found a bug, have an issue, or maybe even a cool idea; you can let us know by [submitting it](https://github.com/pol4rfuchs/ntfy-desktop/issues). However, before you submit your new issue, bug report, or feature request; head over to the [Issues Section](https://github.com/pol4rfuchs/ntfy-desktop/issues) and ensure nobody else has already submitted it.
 
 <br />
 
-Once you are sure that your issue has not already being dealt with; you may submit a new issue at [here](https://github.com/aetherinox/ntfy-desktop/issues/new/choose). You'll be asked to specify exactly what your new submission targets, such as:
+Once you are sure that your issue has not already being dealt with; you may submit a new issue at [here](https://github.com/pol4rfuchs/ntfy-desktop/issues/new/choose). You'll be asked to specify exactly what your new submission targets, such as:
 - Bug report
 - Feature Suggestion
 
@@ -234,301 +218,33 @@ Description:    The description of your commit
 <br />
 <br />
 
-### Languages
-The formatting of code greatly depends on the language being used for this repository.
+### Code Style
 
-- [Python](#python)
-- [Javascript/Typescript/NodeJS](#nodejs---eslint--prettier)
+The app is written in Rust (`src-tauri/`); the settings and about windows are plain HTML and JavaScript without a build step (`ui/`).
 
 <br />
 
-#### Python
-The following guidelines apply to any projects written with Python:
+#### Rust
 
-<br />
+Before opening a pull request, run these in `src-tauri/`. The same checks run in the `Build Tauri (Rust)` workflow:
 
-##### Indentation
-Use `4 spaces` per indentation level.
-
-<br />
-
-> [!TIP] Correct
-> ```python
-> def Encrypt( key : int, bytestr : bytes ):
->     res = b''
->     i_blk, left_bytes = divmod( len(bytestr), 3 )
-> ```
-
-<br />
-
-> [!CAUTION] Wrong
-> ```python
-> def encrypt( key : int, byteStr : bytes ):
->   Res = b''
->   iBlk, leftBytes = divmod( len(byteStr), 3 )
-> ```
-
-<br />
-
-##### Line Length
-Keep the maximum character count to `100 characters per line`. If you are revising old code which doesn't follow this guideline; please rewrite it to conform.
-
-<br />
-
-##### Blank Lines
-Surround top-level functions and class definitions with a blank in-between.
-
-Method definitions inside a class are surrounded by a single blank line.
-
-Extra blank lines may be used (sparingly) to separate groups of functions related to one another. Blank lines may be omitted between a bunch of related one-liners (e.g: set of dummy implementations).
-
-<br />
-
-##### Imports
-Imports should usually be on separate lines:
-
-<br />
-
-> [!TIP] Correct
-> ```python
-> import os
-> import sys
-> ```
-
-<br />
-
-> [!CAUTION] Wrong
-> ```python
-> import sys, os
-> ```
-
-<br />
-
-The following is ok to do:
-
-<br />
-
-> [!TIP] Correct
-> ```python
-> from mypkg import siblingA, siblingB, siblingC
-> ```
-
-<br />
-
-##### Commenting
-Comment your code. It helps novice readers to better understand the process. It doesn't have to be painfully obvious explanations, but it helps to give an idea of what something does.
-
-Please append `#` to the beginning of each line.
-
-```python
-# #
-#   byteString  :   b'1#Aetherx|232#1#233262#0#0#0#'
-# #
-
-def Encrypt( key : int, byteString : bytes ):
-    res = bytearray( )
+```shell
+cargo test
+cargo clippy -- -D warnings
 ```
 
-<br />
+- Keep logic that does not need a window (parsing, URL building, settings, date formats) in plain functions with unit tests, like `poll.rs`, `store.rs` and `datefmt.rs`.
+- Use 4 spaces for indentation and keep lines under about 100 characters.
+- Use `snake_case` for functions and variables, `CamelCase` for types.
+- Do not log secrets. The API token is only logged as a length.
+- New commands that the settings windows call must be added to `build.rs` and to `capabilities/local.json`. The page loaded from the ntfy server may only call `badge_reset`.
 
 <br />
 
-##### Casing
-- Stick to `snake_case`; unless:
-  - naming functions, capitalize the first letter
-  - Capitalize enums
-- If you see code not conforming with this, please revise it in your pull request.
+#### HTML and JavaScript (`ui/`)
 
-<br />
-
-> [!TIP] Correct
-> ```python
-> def Encrypt( key : int, bytestr : bytes ):
->     res = b''
->     i_blk, left_bytes = divmod( len(bytestr), 3 )
-> ```
-
-<br />
-
-> [!CAUTION] Wrong
-> ```python
-> def encrypt( key : int, byteStr : bytes ):
->     Res = b''
->     iBlk, leftBytes = divmod( len(byteStr), 3 )
-> ```
-
-<br />
-
-<br />
-
-<div align="center">
-
-**[`^        back to top        ^`](#about)**
-
-</div>
-
-<br />
-
----
-
-<br />
-
-#### NodeJS - ESLint & Prettier
-The following allows you to configure ESLint and Prettier.
-
-<br />
-
-
-##### Indentation
-Use `4 spaces` per indentation level.
-
-<br />
-
-##### Style
-For files that are not controlled by prettier or eslint; use `Allman Style`.  Braces should be on their own lines, and any code inside the braces should be indented 4 spaces.
-
-<br />
-
-```javascript
-return {
-    status: "failure",
-    user:
-    {
-        id: "1aaa35aa-fb3a-62ae-ffec-a14g7fc401ac",
-        label: "Test String",
-    }
-};
-
-while (x == y)
-{
-    foo();
-    bar();
-}
-```
-
-<br />
-
-##### Line Length
-Keep the maximum character count to `100 characters per line`. The configs on this page have prettier automatically set up to detect more than 100 characters per line.
-
-<br />
-
-##### Packages
-We use the following packages for linting and prettier.
-
-<br />
-
-| Package | Repo File | Description |
-| --- | --- | --- |
-| [typescript-eslint](https://npmjs.com/package/typescript-eslint) | [package.json](./package.json) | Tooling which enables you to use TypeScript with ESLint |
-| [eslint-plugin-prettier](https://npmjs.com/package/eslint-plugin-prettier) | [package.json](./package.json) | Runs Prettier as an ESLint rule and reports differences as individual ESLint issues. |
-| [@typescript-eslint/parser](https://npmjs.com/package/@typescript-eslint/parser) | [package.json](./package.json) | An ESLint parser which leverages TypeScript ESTree to allow for ESLint to lint TypeScript source code. |
-| [@typescript-eslint/eslint-plugin](https://npmjs.com/package/@typescript-eslint/eslint-plugin) | [package.json](./package.json) | An ESLint plugin which provides lint rules for TypeScript codebases. |
-| [@stylistic/eslint-plugin-js](https://npmjs.com/package/@stylistic/eslint-plugin-js) | [package.json](./package.json) | JavaScript stylistic rules for ESLint, migrated from eslint core. |
-| [@stylistic/eslint-plugin-ts](https://npmjs.com/package/@stylistic/eslint-plugin-ts) | [package.json](./package.json) | TypeScript stylistic rules for ESLint, migrated from typescript-eslint. |
-| [@stylistic/eslint-plugin-plus](https://npmjs.com/package/@stylistic/eslint-plugin-plus) | [package.json](./package.json) | Supplementary rules introduced by ESLint Stylistic. |
-| [prettier](https://npmjs.com/package/prettier) | [package.json](./package.json) | Prettier is an opinionated code formatter. It enforces a consistent style by parsing your code and re-printing it with its own rules that take the maximum line length into account, wrapping code when necessary. |
-
-<br />
-
-You can add the following to your `package.json` file:
-```yml
-"devDependencies": {
-    "eslint-plugin-prettier": "^5.1.3",
-    "typescript-eslint": "^7.14.0",
-    "@typescript-eslint/parser": "^7.16.0",
-    "@typescript-eslint/eslint-plugin": "^7.16.0",
-    "@stylistic/eslint-plugin-js": "^2.3.0",
-    "@stylistic/eslint-plugin-ts": "^2.3.0",
-    "@stylistic/eslint-plugin-plus": "^2.3.0",
-    "prettier": "^3.2.5"
-},
-```
-
-<br />
-
-##### Configs
-Within the root folder of the repo, there are several configuration files which you should be using within the project. These files dictate how prettier and eslint will behave and what is acceptable / not acceptable.
-
-<br />
-
-Pick the config file below depending on which version of ESLint you are using. The v8 and older `.eslint` may not be there if we have migrated over to an Eslint v9 flat config file:
-
-<br />
-
-###### ESLint >= v9 Config
-- [eslint.config.mjs](https://github.com/aetherinox/ntfy-desktop/blob/main/eslint.config.mjs)
-- [eslint.config.js](https://github.com/aetherinox/ntfy-desktop/blob/main/eslint.config.js)
-
-    https://github.com/Aetherinox/ntfy-desktop/blob/27ba6d6984aaf6c4d24a1c0b7e37fece88ada788/eslint.config.js#L1-L152
-
-<br />
-
-###### ESLint < v9 Config
-- [.eslintrc](https://github.com/aetherinox/ntfy-desktop/blob/main/.eslintrc)
-
-<br />
-
-###### Prettier
-- [.prettierrc](https://github.com/aetherinox/ntfy-desktop/blob/main/.prettierrc)
-
-    ```yml
-    printWidth: 100,
-    tabWidth: 4,
-    useTabs: false,
-    semi: false,
-    singleQuote: true,
-    quoteProps: 'preserve',
-    jsxSingleQuote: true,
-    trailingComma: 'none',
-    bracketSpacing: true,
-    bracketSameLine: false,
-    arrowParens: 'always',
-    proseWrap: 'preserve',
-    htmlWhitespaceSensitivity: 'ignore',
-    endOfLine: 'auto',
-    embeddedLanguageFormatting: 'auto',
-    singleAttributePerLine: false,
-    experimentalTernaries: false
-    ```
-
-<br />
-
-When submitting your pull request, these linting and style rules will be verified with all of your files. If you did not follow these rules; the linter tests on your pull request will fail; and you'll be expected to correct these issues before your submission will be transferred over for human review.
-
-<br />
-
-##### Commenting
-Comment your code. It helps novice readers to better understand the process.
-
-You may use block style commenting, or single lines:
-
-```javascript
-/*
-    tests to decide if the end-user is running on Darwin or another platform.
-*/
-
-test(`Return true if platform is Darwin`, () => {
-    process.platform = 'darwin';
-    expect(bIsDarwin()).toBe(true);
-});
-
-test(`Return false if platform is not Darwin`, () => {
-    process.platform = 'linux';
-    expect(bIsDarwin()).toBe(false);
-});
-```
-
-<br />
-
-##### Casing
-
-Stick to `camelCase`
-
-```javascript
-let myVar = 'one';
-let secondVar = 'two';
-```
+- Use 2 spaces for indentation and `camelCase` for variables and functions.
+- No external libraries or network requests; the pages work offline.
 
 <br />
 
@@ -546,70 +262,34 @@ let secondVar = 'two';
 <!-- prettier-ignore-start -->
 <!-- markdownlint-disable -->
 
-<!-- BADGE > GENERAL -->
-  [general-npmjs-uri]: https://npmjs.com
-  [general-nodejs-uri]: https://nodejs.org
-  [general-npmtrends-uri]: http://npmtrends.com/ntfy-desktop
-
 <!-- BADGE > VERSION > GITHUB -->
-  [github-version-img]: https://img.shields.io/github/v/tag/Aetherinox/ntfy-desktop?logo=GitHub&label=Version&color=ba5225
-  [github-version-uri]: https://github.com/Aetherinox/ntfy-desktop/releases
+  [github-version-img]: https://img.shields.io/github/v/release/pol4rfuchs/ntfy-desktop?logo=GitHub&label=Version&color=ba5225
+  [github-version-uri]: https://github.com/pol4rfuchs/ntfy-desktop/releases
 
-<!-- BADGE > VERSION > NPMJS -->
-  [npm-version-img]: https://img.shields.io/npm/v/ntfy-desktop?logo=npm&label=Version&color=ba5225
-  [npm-version-uri]: https://npmjs.com/package/ntfy-desktop
-
-<!-- BADGE > VERSION > PYPI -->
-  [pypi-version-img]: https://img.shields.io/pypi/v/ntfy-desktop-plugin
-  [pypi-version-uri]: https://pypi.org/project/ntfy-desktop-plugin/
-
-<!-- BADGE > LICENSE > MIT -->
-  [license-mit-img]: https://img.shields.io/badge/MIT-FFF?logo=creativecommons&logoColor=FFFFFF&label=License&color=9d29a0
-  [license-mit-uri]: https://github.com/Aetherinox/ntfy-desktop/blob/main/LICENSE
+<!-- BADGE > GITHUB > BUILD -->
+  [github-build-img]: https://img.shields.io/github/actions/workflow/status/pol4rfuchs/ntfy-desktop/build-tauri.yml?branch=main&logo=github&logoColor=FFFFFF&label=Build&color=%23278b30
+  [github-build-uri]: https://github.com/pol4rfuchs/ntfy-desktop/actions/workflows/build-tauri.yml
 
 <!-- BADGE > GITHUB > DOWNLOAD COUNT -->
-  [github-downloads-img]: https://img.shields.io/github/downloads/Aetherinox/ntfy-desktop/total?logo=github&logoColor=FFFFFF&label=Downloads&color=376892
-  [github-downloads-uri]: https://github.com/Aetherinox/ntfy-desktop/releases
+  [github-downloads-img]: https://img.shields.io/github/downloads/pol4rfuchs/ntfy-desktop/total?logo=github&logoColor=FFFFFF&label=Downloads&color=376892
+  [github-downloads-uri]: https://github.com/pol4rfuchs/ntfy-desktop/releases
 
-<!-- BADGE > NPMJS > DOWNLOAD COUNT -->
-  [npmjs-downloads-img]: https://img.shields.io/npm/dw/%40aetherinox%2Fmkdocs-link-embeds?logo=npm&&label=Downloads&color=376892
-  [npmjs-downloads-uri]: https://npmjs.com/package/ntfy-desktop
-
-<!-- BADGE > GITHUB > DOWNLOAD SIZE -->
-  [github-size-img]: https://img.shields.io/github/repo-size/Aetherinox/ntfy-desktop?logo=github&label=Size&color=59702a
-  [github-size-uri]: https://github.com/Aetherinox/ntfy-desktop/releases
-
-<!-- BADGE > NPMJS > DOWNLOAD SIZE -->
-  [npmjs-size-img]: https://img.shields.io/npm/unpacked-size/ntfy-desktop/latest?logo=npm&label=Size&color=59702a
-  [npmjs-size-uri]: https://npmjs.com/package/ntfy-desktop
-
-<!-- BADGE > CODECOV > COVERAGE -->
-  [codecov-coverage-img]: https://img.shields.io/codecov/c/github/Aetherinox/ntfy-desktop?token=MPAVASGIOG&logo=codecov&logoColor=FFFFFF&label=Coverage&color=354b9e
-  [codecov-coverage-uri]: https://codecov.io/github/Aetherinox/ntfy-desktop
-
-<!-- BADGE > ALL CONTRIBUTORS -->
-  [contribs-all-img]: https://img.shields.io/github/all-contributors/Aetherinox/ntfy-desktop?logo=contributorcovenant&color=de1f6f&label=contributors
-  [contribs-all-uri]: https://github.com/all-contributors/all-contributors
-
-<!-- BADGE > GITHUB > BUILD > NPM -->
-  [github-build-img]: https://img.shields.io/github/actions/workflow/status/Aetherinox/ntfy-desktop/release.yml?logo=github&logoColor=FFFFFF&label=Build&color=%23278b30
-  [github-build-uri]: https://github.com/Aetherinox/ntfy-desktop/actions/workflows/release.yml
-
-<!-- BADGE > GITHUB > BUILD > Pypi -->
-  [github-build-pypi-img]: https://img.shields.io/github/actions/workflow/status/Aetherinox/ntfy-desktop/release-pypi.yml?logo=github&logoColor=FFFFFF&label=Build&color=%23278b30
-  [github-build-pypi-uri]: https://github.com/Aetherinox/ntfy-desktop/actions/workflows/pypi-release.yml
-
-<!-- BADGE > GITHUB > TESTS -->
-  [github-tests-img]: https://img.shields.io/github/actions/workflow/status/Aetherinox/ntfy-desktop/npm-tests.yml?logo=github&label=Tests&color=2c6488
-  [github-tests-uri]: https://github.com/Aetherinox/ntfy-desktop/actions/workflows/npm-tests.yml
+<!-- BADGE > GITHUB > REPO SIZE -->
+  [github-size-img]: https://img.shields.io/github/repo-size/pol4rfuchs/ntfy-desktop?logo=github&label=Size&color=59702a
+  [github-size-uri]: https://github.com/pol4rfuchs/ntfy-desktop
 
 <!-- BADGE > GITHUB > COMMIT -->
-  [github-commit-img]: https://img.shields.io/github/last-commit/Aetherinox/ntfy-desktop?logo=conventionalcommits&logoColor=FFFFFF&label=Last%20Commit&color=313131
-  [github-commit-uri]: https://github.com/Aetherinox/ntfy-desktop/commits/main/
+  [github-commit-img]: https://img.shields.io/github/last-commit/pol4rfuchs/ntfy-desktop?logo=conventionalcommits&logoColor=FFFFFF&label=Last%20Commit&color=313131
+  [github-commit-uri]: https://github.com/pol4rfuchs/ntfy-desktop/commits/main/
+
+<!-- BADGE > ALL CONTRIBUTORS -->
+  [contribs-all-img]: https://img.shields.io/github/all-contributors/pol4rfuchs/ntfy-desktop?logo=contributorcovenant&color=de1f6f&label=contributors
+  [contribs-all-uri]: https://github.com/all-contributors/all-contributors
+
 
 <!-- BADGE > BUTTON > SUBMIT ISSUES -->
   [btn-github-submit-img]: https://img.shields.io/badge/submit%20new%20issue-de1f5c?style=for-the-badge&logo=github&logoColor=FFFFFF
-  [btn-github-submit-uri]: https://github.com/aetherinox/ntfy-desktop/issues
+  [btn-github-submit-uri]: https://github.com/pol4rfuchs/ntfy-desktop/issues
 
 <!-- prettier-ignore-end -->
 <!-- markdownlint-restore -->

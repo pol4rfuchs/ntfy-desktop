@@ -13,6 +13,7 @@ use crate::{
 use serde_json::{json, Map, Value};
 use std::sync::atomic::Ordering;
 use tauri::{AppHandle, Manager, State};
+use tauri_plugin_autostart::ManagerExt;
 
 #[tauri::command]
 pub fn badge_reset(app: AppHandle) {
@@ -20,13 +21,15 @@ pub fn badge_reset(app: AppHandle) {
 }
 
 #[tauri::command]
-pub fn get_settings(state: State<'_, AppState>) -> Value {
+pub fn get_settings(app: AppHandle, state: State<'_, AppState>) -> Value {
     let s = &state.store;
     json!({
         "bDevTools": s.get_int("bDevTools"),
         "bHotkeys": s.get_int("bHotkeys"),
         "bQuitOnClose": s.get_int("bQuitOnClose"),
         "bStartHidden": s.get_int("bStartHidden"),
+        // the operating system holds this state, not prefs.json
+        "bAutostart": app.autolaunch().is_enabled().unwrap_or(false) as i64,
         "instanceURL": s.get_str("instanceURL").unwrap_or_else(|| DEF_INSTANCE_URL.into()),
         "bLocalhost": s.get_int("bLocalhost"),
         "topics": s.get_sanitized("topics", DEF_TOPICS),
@@ -51,6 +54,16 @@ pub fn save_settings(app: AppHandle, state: State<'_, AppState>, patch: Map<Stri
 
     for (key, val) in &patch {
         match key.as_str() {
+            "bAutostart" => {
+                let want = crate::store::value_to_int(Some(val)) != 0;
+                let manager = app.autolaunch();
+                let is_on = manager.is_enabled().unwrap_or(false);
+                if want != is_on {
+                    let res = if want { manager.enable() } else { manager.disable() };
+                    res.map_err(|e| format!("Could not change autostart: {e}"))?;
+                    tracing::info!("[autostart] {}", if want { "enabled" } else { "disabled" });
+                }
+            }
             k if FLAG_KEYS.contains(&k) => {
                 let new = if crate::store::value_to_int(Some(val)) != 0 { 1 } else { 0 };
                 if s.get_int(k) != new {

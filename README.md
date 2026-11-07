@@ -30,10 +30,9 @@
 <!-- prettier-ignore-start -->
 [![Version][github-version-img]][github-version-uri]
 [![Build Status][github-build-img]][github-build-uri]
-[![Build Status][github-tests-img]][github-tests-uri]
 [![Downloads][github-downloads-img]][github-downloads-uri]
-[![Size][github-size-img]][github-size-img]
-[![Last Commit][github-commit-img]][github-commit-img]
+[![Size][github-size-img]][github-size-uri]
+[![Last Commit][github-commit-img]][github-commit-uri]
 [![Contributors][contribs-all-img]](#contributors-)
 <!-- prettier-ignore-end -->
 
@@ -59,10 +58,12 @@
   - [Run From Source](#run-from-source)
   - [GitHub Workflows](#github-workflows)
 - [Tests](#tests)
-- [Signed Releases](#signed-releases)
-  - [Validate .Sig](#validate-sig)
-  - [Validate SHA256SUM](#validate-sha256sum)
-  - [Validate SHA1SUM](#validate-sha1sum)
+- [Verify Downloads](#verify-downloads)
+  - [Check a Download](#check-a-download)
+    - [Windows](#windows)
+    - [Linux](#linux)
+    - [MacOS](#macos)
+  - [First Start Warnings](#first-start-warnings)
 - [Dependencies](#dependencies)
 - [Contributors ✨](#contributors-)
 
@@ -102,6 +103,7 @@ To install Ntfy on your system, visit the following links:
   1. Close button exits app completely; OR
   2. Close button sends app to tray. Right-click tray icon to quit / show app
 - Start app minimized
+- Start at login (Settings → General → Start at Login); starts minimized in the tray
 - Shortcut key-binds
   - Can disable the keyboard shortcuts
 - Receive push notifications from ntfy server to desktop
@@ -329,448 +331,56 @@ They run automatically in the `Build Tauri (Rust)` workflow.
 
 <br />
 
-# Signed Releases
+# Verify Downloads
 
-These steps allow you to validate the files `sha256sum.txt.asc`, `sha1sum.txt.asc`, and `sha256sum.sig` which we provide with every release.
-
-Validating these files helps ensure that the actual .zip or binary files you have downloaded indeed came from the real developer. Before you start reading the sections below; ensure you have the following packages installed:
-
-- GPG
-- sha1sum
-- sha256sum
+Every release contains the files `SHA256SUMS.txt` and `SHA1SUMS.txt`. They list the checksum of every installer of that release, so you can check that a download is complete and was not changed. The installers themselves are **not code-signed**: Windows SmartScreen and macOS Gatekeeper show a warning on first start (see below).
 
 <br />
 
-You can install these by running the commands:
+## Check a Download
 
-```shell
-# Ubuntu / Debian Systems
-sudo apt update
-sudo apt install gpg gnupg sha1sum sha256sum
+Put the installer and `SHA256SUMS.txt` in the same folder. Replace the version in the file names with the one you downloaded.
 
-# Fedora / Redhat
-(yum | or | dnf ) install gpg gnupg
+<br />
+
+### Windows
+
+```powershell
+# print the checksum of the installer
+Get-FileHash .\ntfy-desktop-2.2.1-windows-x64-setup.exe -Algorithm SHA256
+
+# show the expected value from the release; both must be identical
+Select-String -Path .\SHA256SUMS.txt -Pattern "windows-x64-setup"
 ```
 
 <br />
 
-## Validate .Sig
+### Linux
 
-Each release includes two `.sig` files; these are known as a GPG **Detached Signature**.
+```shell
+# checks every file in the folder that is listed in SHA256SUMS.txt
+sha256sum -c SHA256SUMS.txt --ignore-missing
+```
 
-- sha1sum.sig
-- sha256sum.sig
+Expected output: `ntfy-desktop-2.2.1-linux-amd64.deb: OK`. Any `FAILED` means the file is damaged or changed; download it again.
 
 <br />
 
-To validate that these signatures are good, download each of the files to your local machine:
+### macOS
 
 ```shell
-# sha1sum
-wget https://github.com/Aetherinox/ntfy-desktop/releases/download/2.1.1/sha1sum.sig
-
-# sha256sum
-wget https://github.com/Aetherinox/ntfy-desktop/releases/download/2.1.1/sha256sum.sig
+# print the checksum and compare it with the line in SHA256SUMS.txt
+shasum -a 256 ntfy-desktop-2.2.1-macos-universal.dmg
+grep macos-universal SHA256SUMS.txt
 ```
 
 <br />
 
-Next, you will need the two associated files:
-
-- sha1sum.txt.asc
-- sha256sum.txt.asc
-
-<br />
-
-To download these, run the commands:
-
-```shell
-# sha1sum.txt.asc
-wget https://github.com/Aetherinox/ntfy-desktop/releases/download/2.1.1/sha1sum.txt.asc
-
-# sha256sum.txt.asc
-wget https://github.com/Aetherinox/ntfy-desktop/releases/download/2.1.1/sha256sum.txt.asc
-```
-
-<br />
-
-Now we can validate that these files indeed came from the original developer; run the command:
-
-```shell
-gpg --verify sha1sum.sig sha1sum.txt.asc
-```
-
-<br />
-
-You should see the output:
-
-```shell
-gpg:                using RSA key 6921C2D3F6AE1188B7721C72F397BC89486A29A6
-gpg: Good signature from "Binary Ninja (RSA 4096) <thebinaryninja@proton.me>" [unknown]
-Primary key fingerprint: E8BA 8C94 B334 1673 0D8C  05C2 5769 7A1C BA63 B9FE
-     Subkey fingerprint: 6921 C2D3 F6AE 1188 B772  1C72 F397 BC89 486A 29A6
-```
-
-<br />
-
-Now validate the `sha256sum.sig` with the `sha256sum.txt.asc`:
-
-```shell
-gpg --verify sha256sum.sig sha256sum.txt.asc
-```
-
-<br />
-
-You should see the output:
-
-```shell
-gpg:                using RSA key 6921C2D3F6AE1188B7721C72F397BC89486A29A6
-gpg: Good signature from "Binary Ninja (RSA 4096) <thebinaryninja@proton.me>" [unknown]
-Primary key fingerprint: E8BA 8C94 B334 1673 0D8C  05C2 5769 7A1C BA63 B9FE
-     Subkey fingerprint: 6921 C2D3 F6AE 1188 B772  1C72 F397 BC89 486A 29A6
-```
-
-<br />
-
-If you get the above results; you have validated the signature files.
-
-<br />
-
-<br />
-
-## Validate SHA256SUM
-
-This section explains how you can validate the downloaded `.zip` files and see if they are indeed authentic from the original developer. Before you can validate these files, you need to download the public GPG key we use when we sign releases. You can download it by running the following command:
-
-```shell
-curl -s https://github.com/BinaryServ.gpg | gpg --import
-```
-
-<br />
-
-Download the `sha256sum.txt.asc` and validate the file itself:
-
-```shell
-wget https://github.com/Aetherinox/ntfy-desktop/releases/download/2.1.1/sha256sum.txt.asc
-
-gpg --verify sha256sum.txt.asc
-```
-
-<br />
-
-You should see the following. The value `6921C2D3F6AE1188B7721C72F397BC89486A29A6` is the key's fingerprint.
-
-```shell
-gpg: Signature made Mon 01 Jun 2025 00:00:00 UTC
-gpg:                using RSA key 6921C2D3F6AE1188B7721C72F397BC89486A29A6
-gpg: Good signature from "Binary Ninja (RSA 4096) <thebinaryninja@proton.me>" [ultimate]
-```
-
-<br />
-
-You can view your existing GPG key fingerprints by running:
-
-```shell
-gpg --list-keys --keyid-format=long --fingerprint --with-fingerprint
-```
-
-<br />
-
-This will allow you to see where the `692XXXXX` value comes from:
-
-```shell
-pub   rsa4096 2025-04-21 [C]
-      E8BA 8C94 B334 1673 0D8C  05C2 5769 7A1C BA63 B9FE
-uid           [ unknown] Binary Ninja (RSA 4096) <thebinaryninja@proton.me>
-sub   rsa4096 2025-04-21 [S]
- >>>> 6921 C2D3 F6AE 1188 B772  1C72 F397 BC89 486A 29A6
-sub   rsa4096 2025-04-21 [E]
-      25E9 AFEC C12F 2072 AA6E  D5AB B077 63D0 A12F 0ED8
-sub   rsa4096 2025-04-21 [A]
-      AD79 A1EA CE17 962F B4ED  B30A DBA8 EA76 62FC 54E2
-```
-
-<br />
-
-Next, download the `sha256sum.sig`
-
-```shell
-wget https://github.com/Aetherinox/ntfy-desktop/releases/download/2.1.1/sha256sum.sig
-```
-
-<br />
-
-To validate the `.sig` file and your `sha256sum` file, run the command:
-
-```shell
-gpg --verify sha256sum.sig sha256sum.txt.asc
-```
-
-<br />
-
-You should see:
-
-```shell
-gpg:                using RSA key 6921C2D3F6AE1188B7721C72F397BC89486A29A6
-gpg: Good signature from "Binary Ninja (RSA 4096) <thebinaryninja@proton.me>" [unknown]
-Primary key fingerprint: E8BA 8C94 B334 1673 0D8C  05C2 5769 7A1C BA63 B9FE
-     Subkey fingerprint: 6921 C2D3 F6AE 1188 B772  1C72 F397 BC89 486A 29A6
-```
-
-<br />
-
-You can now validate the `sha256sum.txt.asc` file against the files you have downloaded from our repository. In order to verify that the files are legit, you must download them from the [Releases](https://github.com/Aetherinox/ntfy-desktop/releases) page. They end with the extension `.zip`. You can also download them using `wget`. Make sure you download the zip files to the same folder where you downloaded the `sha256sum.txt.asc` and `sha256sum.sig`
-
-```shell
-# Download ntfy-desktop-2.1.1-darwin-amd64.zip
-wget \
-  https://github.com/Aetherinox/ntfy-desktop/releases/download/2.1.1/ntfy-desktop-2.1.1-darwin-amd64.zip
-
-# Download ntfy-desktop-2.1.1-darwin-arm64.zip
-wget \
-  https://github.com/Aetherinox/ntfy-desktop/releases/download/2.1.1/ntfy-desktop-2.1.1-darwin-arm64.zip
-
-# Download ntfy-desktop-2.1.1-linux-amd64.zip
-wget \
-  https://github.com/Aetherinox/ntfy-desktop/releases/download/2.1.1/ntfy-desktop-2.1.1-linux-amd64.zip
-
-# Download ntfy-desktop-2.1.1-linux-arm64.zip
-wget \
-  https://github.com/Aetherinox/ntfy-desktop/releases/download/2.1.1/ntfy-desktop-2.1.1-linux-arm64.zip
-
-# Download ntfy-desktop-2.1.1-linux-armv7l.zip
-wget \
-  https://github.com/Aetherinox/ntfy-desktop/releases/download/2.1.1/ntfy-desktop-2.1.1-linux-armv7l.zip
-
-# Download ntfy-desktop-2.1.1-win32-amd64.zip
-wget \
-  https://github.com/Aetherinox/ntfy-desktop/releases/download/2.1.1/ntfy-desktop-2.1.1-win32-amd64.zip
-
-# Download ntfy-desktop-2.1.1-win32-arm64.zip
-wget \
-  https://github.com/Aetherinox/ntfy-desktop/releases/download/2.1.1/ntfy-desktop-2.1.1-win32-arm64.zip
-
-# Download ntfy-desktop-2.1.1-win32-ia32.zip
-wget \
-  https://github.com/Aetherinox/ntfy-desktop/releases/download/2.1.1/ntfy-desktop-2.1.1-win32-ia32.zip
-```
-
-<br />
-
-Next, extract the hashes from the hash digest `sha256sum.txt.asc` file by running the command:
-
-```shell
-gpg --output sha256sum.txt --verify sha256sum.txt.asc
-```
-
-<br />
-
-The command above will create a new file called `sha256sum.txt`, now run that file with the program `sha256sum`:
-
-```shell
-sha256sum --check sha256sum.txt
-```
-
-<br />
-
-Which will output:
-
-```shell
-# Successful validation
-ntfy-desktop-2.1.1-win32-ia32.zip: OK
-ntfy-desktop-2.1.1-darwin-amd64.zip: OK
-ntfy-desktop-2.1.1-win32-amd64.zip: OK
-ntfy-desktop-2.1.1-win32-arm64.zip: OK
-ntfy-desktop-2.1.1-darwin-arm64.zip: OK
-ntfy-desktop-2.1.1-linux-armv7l.zip: OK
-ntfy-desktop-2.1.1-linux-amd64.zip: OK
-ntfy-desktop-2.1.1-linux-arm64.zip: OK
-
-# Files missing for validation
-ntfy-desktop-2.1.1-linux-arm64.zip: FAILED open or read
-
-# File did not pass validation
-ntfy-desktop-2.1.1-linux-arm64.zip: FAILED
-```
-
-<br />
-
-If you see `FAILED` and the files are indeed there, ensure you downloaded them from our repository and not somewhere else.
-
-<br />
-
-If you see `OK`; this means the files are valid.
-
-<br />
-
-## Validate SHA1SUM
-
-This section explains how you can validate the downloaded `.zip` files and see if they are indeed authentic from the original developer. Validating the `sha1sum.txt.asc` is similar to the `sha256sum.txt.asc`, first, download the public GPG key we use when we sign releases. You can download it by running the following command:
-
-```shell
-curl -s https://github.com/BinaryServ.gpg | gpg --import
-```
-
-<br />
-
-Next, download the `sha1sum.txt.asc` file:
-
-```shell
-wget https://github.com/Aetherinox/ntfy-desktop/releases/download/2.1.1/sha1sum.txt.asc
-```
-
-<br />
-
-Now verify that the `sha1sum.txt.asc` is properly signed:
-
-```shell
-gpg --verify sha1sum.txt.asc
-```
-
-<br />
-
-You should see the following. The value `6921C2D3F6AE1188B7721C72F397BC89486A29A6` is the key's fingerprint.
-
-```shell
-gpg: Signature made Mon 01 Jun 2025 00:00:00 UTC
-gpg:                using RSA key 6921C2D3F6AE1188B7721C72F397BC89486A29A6
-gpg: Good signature from "Binary Ninja (RSA 4096) <thebinaryninja@proton.me>" [ultimate]
-```
-
-<br />
-
-You can view your existing GPG key fingerprints by running:
-
-```shell
-gpg --list-keys --keyid-format=long --fingerprint --with-fingerprint
-```
-
-<br />
-
-This will allow you to see where the `692XXXXX` value comes from:
-
-```shell
-pub   rsa4096 2025-04-21 [C]
-      E8BA 8C94 B334 1673 0D8C  05C2 5769 7A1C BA63 B9FE
-uid           [ unknown] Binary Ninja (RSA 4096) <thebinaryninja@proton.me>
-sub   rsa4096 2025-04-21 [S]
- >>>> 6921 C2D3 F6AE 1188 B772  1C72 F397 BC89 486A 29A6
-sub   rsa4096 2025-04-21 [E]
-      25E9 AFEC C12F 2072 AA6E  D5AB B077 63D0 A12F 0ED8
-sub   rsa4096 2025-04-21 [A]
-      AD79 A1EA CE17 962F B4ED  B30A DBA8 EA76 62FC 54E2
-```
-
-<br />
-
-Next, download the `sha1sum.sig`
-
-```shell
-wget https://github.com/Aetherinox/ntfy-desktop/releases/download/2.1.1/sha1sum.sig
-```
-
-<br />
-
-To validate the `sha1sum.sig` file and your `sha1sum.txt.asc` file, run the command:
-
-```shell
-gpg --verify sha1sum.sig sha1sum.txt.asc
-```
-
-<br />
-
-You should see:
-
-```shell
-gpg:                using RSA key 6921C2D3F6AE1188B7721C72F397BC89486A29A6
-gpg: Good signature from "Binary Ninja (RSA 4096) <thebinaryninja@proton.me>" [unknown]
-Primary key fingerprint: E8BA 8C94 B334 1673 0D8C  05C2 5769 7A1C BA63 B9FE
-     Subkey fingerprint: 6921 C2D3 F6AE 1188 B772  1C72 F397 BC89 486A 29A6
-```
-
-<br />
-
-You can now validate the `sha1sum.txt.asc` file against the files you have downloaded from our repository. In order to verify that the files are legit, you must download them from the [Releases](https://github.com/Aetherinox/ntfy-desktop/releases) page. They end with the extension `.zip`. You can also download them using `wget`. Make sure you download the zip files to the same folder where you downloaded the `sha1sum.txt.asc` and `sha1sum.sig`
-
-```shell
-# Download ntfy-desktop-2.1.1-darwin-amd64.zip
-wget \
-  https://github.com/Aetherinox/ntfy-desktop/releases/download/2.1.1/ntfy-desktop-2.1.1-darwin-amd64.zip
-
-# Download ntfy-desktop-2.1.1-darwin-arm64.zip
-wget \
-  https://github.com/Aetherinox/ntfy-desktop/releases/download/2.1.1/ntfy-desktop-2.1.1-darwin-arm64.zip
-
-# Download ntfy-desktop-2.1.1-linux-amd64.zip
-wget \
-  https://github.com/Aetherinox/ntfy-desktop/releases/download/2.1.1/ntfy-desktop-2.1.1-linux-amd64.zip
-
-# Download ntfy-desktop-2.1.1-linux-arm64.zip
-wget \
-  https://github.com/Aetherinox/ntfy-desktop/releases/download/2.1.1/ntfy-desktop-2.1.1-linux-arm64.zip
-
-# Download ntfy-desktop-2.1.1-linux-armv7l.zip
-wget \
-  https://github.com/Aetherinox/ntfy-desktop/releases/download/2.1.1/ntfy-desktop-2.1.1-linux-armv7l.zip
-
-# Download ntfy-desktop-2.1.1-win32-amd64.zip
-wget \
-  https://github.com/Aetherinox/ntfy-desktop/releases/download/2.1.1/ntfy-desktop-2.1.1-win32-amd64.zip
-
-# Download ntfy-desktop-2.1.1-win32-arm64.zip
-wget \
-  https://github.com/Aetherinox/ntfy-desktop/releases/download/2.1.1/ntfy-desktop-2.1.1-win32-arm64.zip
-
-# Download ntfy-desktop-2.1.1-win32-ia32.zip
-wget \
-  https://github.com/Aetherinox/ntfy-desktop/releases/download/2.1.1/ntfy-desktop-2.1.1-win32-ia32.zip
-```
-
-<br />
-
-Next, extract the hashes from the hash digest `sha1sum.txt.asc` file by running the command:
-
-```shell
-gpg --output sha1sum.txt --verify sha1sum.txt.asc
-```
-
-<br />
-
-The command above will create a new file called `sha1sum.txt`, now run that file with the program `sha1sum`:
-
-```shell
-sha1sum --check sha1sum.txt
-```
-
-<br />
-
-Which will output:
-
-```shell
-# Successful validation
-ntfy-desktop-2.1.1-win32-ia32.zip: OK
-ntfy-desktop-2.1.1-darwin-amd64.zip: OK
-ntfy-desktop-2.1.1-win32-amd64.zip: OK
-ntfy-desktop-2.1.1-win32-arm64.zip: OK
-ntfy-desktop-2.1.1-darwin-arm64.zip: OK
-ntfy-desktop-2.1.1-linux-armv7l.zip: OK
-ntfy-desktop-2.1.1-linux-amd64.zip: OK
-ntfy-desktop-2.1.1-linux-arm64.zip: OK
-
-# Files missing for validation
-ntfy-desktop-2.1.1-linux-arm64.zip: FAILED open or read
-
-# File did not pass validation
-ntfy-desktop-2.1.1-linux-arm64.zip: FAILED
-```
-
-<br />
-
-If you see `FAILED` and the files are indeed there, ensure you downloaded them from our repository and not somewhere else.
-
-<br />
-
-If you see `OK`; this means the files are valid.
+## First Start Warnings
+
+- **Windows:** SmartScreen shows "Windows protected your PC". Click **More info**, then **Run anyway**.
+- **macOS:** the app is not notarized. Right-click the app, choose **Open**, and confirm.
+- **Linux:** make the AppImage executable first: `chmod +x ntfy-desktop-*.AppImage`.
 
 <br />
 
@@ -813,7 +423,7 @@ We are always looking for contributors. If you feel that you can provide somethi
 
 Want to help but can't write code?
 
-- Review [active questions by our community](https://github.com/aetherinox/ntfy-desktop/labels/❔%20Question) and answer the ones you know.
+- Review [active questions by our community](https://github.com/pol4rfuchs/ntfy-desktop/labels/❔%20Question) and answer the ones you know.
 
 <br />
 
@@ -859,67 +469,29 @@ The following people have helped get this project going:
 
 
 
-<!-- BADGE > GENERAL -->
-  [general-npmjs-uri]: https://npmjs.com
-  [general-nodejs-uri]: https://nodejs.org
-  [general-npmtrends-uri]: http://npmtrends.com/ntfy-desktop
-
 <!-- BADGE > VERSION > GITHUB -->
-  [github-version-img]: https://img.shields.io/github/v/tag/aetherinox/ntfy-desktop?logo=GitHub&label=Version&color=ba5225
-  [github-version-uri]: https://github.com/aetherinox/ntfy-desktop/releases
+  [github-version-img]: https://img.shields.io/github/v/release/pol4rfuchs/ntfy-desktop?logo=GitHub&label=Version&color=ba5225
+  [github-version-uri]: https://github.com/pol4rfuchs/ntfy-desktop/releases
 
-<!-- BADGE > VERSION > NPMJS -->
-  [npm-version-img]: https://img.shields.io/npm/v/ntfy-desktop?logo=npm&label=Version&color=ba5225
-  [npm-version-uri]: https://npmjs.com/package/ntfy-desktop
-
-<!-- BADGE > VERSION > PYPI -->
-  [pypi-version-img]: https://img.shields.io/pypi/v/ntfy-desktop
-  [pypi-version-uri]: https://pypi.org/project/ntfy-desktop/
-
-<!-- BADGE > LICENSE > MIT -->
-  [license-mit-img]: https://img.shields.io/badge/MIT-FFF?logo=creativecommons&logoColor=FFFFFF&label=License&color=9d29a0
-  [license-mit-uri]: https://github.com/aetherinox/ntfy-desktop/blob/main/LICENSE
+<!-- BADGE > GITHUB > BUILD -->
+  [github-build-img]: https://img.shields.io/github/actions/workflow/status/pol4rfuchs/ntfy-desktop/build-tauri.yml?branch=main&logo=github&logoColor=FFFFFF&label=Build&color=%23278b30
+  [github-build-uri]: https://github.com/pol4rfuchs/ntfy-desktop/actions/workflows/build-tauri.yml
 
 <!-- BADGE > GITHUB > DOWNLOAD COUNT -->
-  [github-downloads-img]: https://img.shields.io/github/downloads/aetherinox/ntfy-desktop/total?logo=github&logoColor=FFFFFF&label=Downloads&color=376892
-  [github-downloads-uri]: https://github.com/aetherinox/ntfy-desktop/releases
+  [github-downloads-img]: https://img.shields.io/github/downloads/pol4rfuchs/ntfy-desktop/total?logo=github&logoColor=FFFFFF&label=Downloads&color=376892
+  [github-downloads-uri]: https://github.com/pol4rfuchs/ntfy-desktop/releases
 
-<!-- BADGE > NPMJS > DOWNLOAD COUNT -->
-  [npmjs-downloads-img]: https://img.shields.io/npm/dw/%40aetherinox%2Fntfy-desktop?logo=npm&&label=Downloads&color=376892
-  [npmjs-downloads-uri]: https://npmjs.com/package/ntfy-desktop
-
-<!-- BADGE > GITHUB > DOWNLOAD SIZE -->
-  [github-size-img]: https://img.shields.io/github/repo-size/aetherinox/ntfy-desktop?logo=github&label=Size&color=59702a
-  [github-size-uri]: https://github.com/aetherinox/ntfy-desktop/releases
-
-<!-- BADGE > NPMJS > DOWNLOAD SIZE -->
-  [npmjs-size-img]: https://img.shields.io/npm/unpacked-size/ntfy-desktop/latest?logo=npm&label=Size&color=59702a
-  [npmjs-size-uri]: https://npmjs.com/package/ntfy-desktop
-
-<!-- BADGE > CODECOV > COVERAGE -->
-  [codecov-coverage-img]: https://img.shields.io/codecov/c/github/aetherinox/ntfy-desktop?token=MPAVASGIOG&logo=codecov&logoColor=FFFFFF&label=Coverage&color=354b9e
-  [codecov-coverage-uri]: https://codecov.io/github/aetherinox/ntfy-desktop
-
-<!-- BADGE > ALL CONTRIBUTORS -->
-  [contribs-all-img]: https://img.shields.io/github/all-contributors/aetherinox/ntfy-desktop?logo=contributorcovenant&color=de1f6f&label=contributors
-  [contribs-all-uri]: https://github.com/all-contributors/all-contributors
-
-<!-- BADGE > GITHUB > BUILD > NPM -->
-  [github-build-img]: https://img.shields.io/github/actions/workflow/status/aetherinox/ntfy-desktop/npm-build.yml?logo=github&logoColor=FFFFFF&label=Build&color=%23278b30
-  [github-build-uri]: https://github.com/aetherinox/ntfy-desktop/actions/workflows/npm-build.yml
-
-<!-- BADGE > GITHUB > BUILD > Pypi -->
-  [github-build-pypi-img]: https://img.shields.io/github/actions/workflow/status/aetherinox/ntfy-desktop/app-pypi.yml?logo=github&logoColor=FFFFFF&label=Build&color=%23278b30
-  [github-build-pypi-uri]: https://github.com/aetherinox/ntfy-desktop/actions/workflows/app-pypi.yml
-
-<!-- BADGE > GITHUB > TESTS -->
-  [github-tests-img]: https://img.shields.io/github/actions/workflow/status/aetherinox/ntfy-desktop/npm-tests.yml?logo=github&label=Tests&color=2c6488
-  [github-tests-uri]: https://github.com/aetherinox/ntfy-desktop/actions/workflows/npm-tests.yml?logo=github&label=Tests&color=2c6488
-  [github-tests-uri]: https://github.com/aetherinox/ntfy-desktop/actions/workflows/app-tests.yml.yml
+<!-- BADGE > GITHUB > REPO SIZE -->
+  [github-size-img]: https://img.shields.io/github/repo-size/pol4rfuchs/ntfy-desktop?logo=github&label=Size&color=59702a
+  [github-size-uri]: https://github.com/pol4rfuchs/ntfy-desktop
 
 <!-- BADGE > GITHUB > COMMIT -->
-  [github-commit-img]: https://img.shields.io/github/last-commit/aetherinox/ntfy-desktop?logo=conventionalcommits&logoColor=FFFFFF&label=Last%20Commit&color=313131
-  [github-commit-uri]: https://github.com/aetherinox/ntfy-desktop/commits/main/
+  [github-commit-img]: https://img.shields.io/github/last-commit/pol4rfuchs/ntfy-desktop?logo=conventionalcommits&logoColor=FFFFFF&label=Last%20Commit&color=313131
+  [github-commit-uri]: https://github.com/pol4rfuchs/ntfy-desktop/commits/main/
+
+<!-- BADGE > ALL CONTRIBUTORS -->
+  [contribs-all-img]: https://img.shields.io/github/all-contributors/pol4rfuchs/ntfy-desktop?logo=contributorcovenant&color=de1f6f&label=contributors
+  [contribs-all-uri]: https://github.com/all-contributors/all-contributors
 
 <!-- prettier-ignore-end -->
 <!-- markdownlint-restore -->
