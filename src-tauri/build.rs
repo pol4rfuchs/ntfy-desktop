@@ -1,7 +1,8 @@
 fn main() {
     // Commit the binary was built from; shown in the window title and About page
     // so different builds with the same version can be told apart.
-    let hash = std::env::var("GITHUB_SHA")
+    let hash = std::env::var("NTFY_BUILD_SHA")
+        .or_else(|_| std::env::var("GITHUB_SHA"))
         .ok()
         .map(|h| h.chars().take(7).collect::<String>())
         .filter(|h| !h.is_empty())
@@ -15,6 +16,7 @@ fn main() {
         })
         .unwrap_or_else(|| "unknown".into());
     println!("cargo:rustc-env=NTFY_BUILD={hash}");
+    println!("cargo:rerun-if-env-changed=NTFY_BUILD_SHA");
     println!("cargo:rerun-if-env-changed=GITHUB_SHA");
     println!("cargo:rerun-if-changed=../.git/HEAD");
 

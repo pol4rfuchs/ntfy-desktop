@@ -57,6 +57,7 @@
   - [Build Script](#build-script)
   - [Run From Source](#run-from-source)
   - [GitHub Workflows](#github-workflows)
+  - [Releasing](#releasing)
 - [Tests](#tests)
 - [Verify Downloads](#verify-downloads)
   - [Check a Download](#check-a-download)
@@ -301,7 +302,24 @@ cargo run
 | Workflow | Trigger | What it does |
 | --- | --- | --- |
 | `Build Tauri (Rust)` | manual, or a pull request touching `src-tauri/` or `ui/` | runs Rust tests and Clippy, builds installers for Windows, Linux and macOS and attaches them to the run as artifacts |
-| `Build & Release` | manual | same builds, then publishes a GitHub release with checksums. The version is read from `src-tauri/tauri.conf.json` and must match `src-tauri/Cargo.toml` |
+| `Build & Release` | manual | raises the version (input `BUMP`, default `auto`), commits it to `main`, builds the installers and publishes a GitHub release with checksums. See [Releasing](#releasing) |
+
+<br />
+
+## Releasing
+
+Start **Actions → Build & Release → Run workflow** on the `main` branch. You do not edit any version number by hand.
+
+| Input | Meaning |
+| --- | --- |
+| `BUMP` = `auto` (default) | next patch version (2.2.2 → 2.2.3), unless the current version has no release yet; then it is released as it is |
+| `BUMP` = `patch` / `minor` / `major` | always raise that part (2.2.2 → 2.2.3 / 2.3.0 / 3.0.0) |
+| `BUMP` = `none` | keep the current version; stops if that release already exists |
+| `RC_RELEASE` on | publishes a pre-release `vX.Y.Z-rc.N` (`RC_VERSION` = N) |
+
+The workflow writes the new version into `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`, `src-tauri/Cargo.lock` and the file names in the README, commits that to `main` (`chore(release): bump version to …`) and builds and tags exactly that commit. A release candidate followed by a normal run with `auto` releases the same version number.
+
+If a release run fails, use **Re-run failed jobs**. **Re-run all jobs** stops because the release already exists.
 
 <br />
 
